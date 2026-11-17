@@ -1,0 +1,14 @@
+{
+  "id": "com.tidewatch.app",
+  "version": "0.1.0",
+  "vendor": "Tidewatch",
+  "type": "web",
+  "main": "index.html",
+  "title": "Tidewatch",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#020d17",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true,
+  "requiredACG": []
+}
