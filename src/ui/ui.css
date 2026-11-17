@@ -1,0 +1,137 @@
+/* The UI layer: a 1920x1080 box scaled to sit exactly over the canvas. */
+.tw-ui {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: 0 0;
+  pointer-events: none;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: #eaf6ff;
+  overflow: hidden;
+}
+
+/* Elements that fade out when the viewer is idle (spec 5.1). */
+.tw-idle-fade {
+  transition: opacity 1.2s ease;
+}
+.tw-ui.tw-idle .tw-idle-fade {
+  opacity: 0;
+}
+
+.tw-brand {
+  position: absolute;
+  left: 72px;
+  top: 56px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+.tw-brand h1 {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+.tw-brand p {
+  margin: 6px 0 0;
+  font-size: 28px;
+  opacity: 0.75;
+}
+
+.tw-toast {
+  position: absolute;
+  left: 50%;
+  top: 120px;
+  min-width: 520px;
+  max-width: 900px;
+  padding: 22px 36px;
+  border-radius: 22px;
+  background: rgba(6, 28, 44, 0.72);
+  border: 1px solid rgba(180, 230, 255, 0.25);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, -12px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.tw-toast.tw-show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.tw-toast .tw-kicker {
+  font-size: 22px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8fd3f5;
+}
+.tw-toast .tw-title {
+  margin-top: 6px;
+  font-size: 38px;
+  font-weight: 600;
+}
+.tw-toast .tw-body {
+  margin-top: 6px;
+  font-size: 26px;
+  opacity: 0.8;
+}
+.tw-toast.tw-rare .tw-kicker {
+  color: #ffd98a;
+}
+.tw-toast.tw-rare {
+  border-color: rgba(255, 220, 140, 0.45);
+}
+
+.tw-hint {
+  position: absolute;
+  bottom: 80px;
+  left: 0;
+  padding: 16px 30px 20px;
+  border-radius: 999px;
+  background: rgba(40, 30, 6, 0.6);
+  border: 1px solid rgba(255, 220, 140, 0.5);
+  font-size: 30px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.tw-hint.tw-show {
+  opacity: 1;
+}
+.tw-hint b {
+  display: inline-block;
+  min-width: 52px;
+  margin-right: 10px;
+  padding: 2px 12px;
+  border-radius: 10px;
+  background: #ffd98a;
+  color: #2a1d00;
+  text-align: center;
+}
+.tw-hint .tw-bar {
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  bottom: 8px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 217, 138, 0.8);
+  transform-origin: 0 50%;
+}
+
+.tw-fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+}
+
+.tw-debug {
+  position: absolute;
+  right: 24px;
+  bottom: 20px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  font: 20px/1.4 ui-monospace, Menlo, Consolas, monospace;
+  white-space: pre;
+}

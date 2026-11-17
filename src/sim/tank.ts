@@ -41,6 +41,35 @@ export class Tank {
     this.sortByDepth();
   }
 
+  /**
+   * Add a newly collected species. With `enter`, the fish swim in from the
+   * side of the tank; otherwise they appear at `at` (a caught visitor).
+   */
+  addSpecies(species: Species, opts: { enter?: boolean; at?: { x: number; y: number; facing: 1 | -1 } } = {}): FishAgent[] {
+    const [lo, hi] = species.groupSize;
+    let n = lo + Math.floor(this.rng() * (hi - lo + 1));
+    while (n > 1 && this.agents.length + n > FISH_CAP) n--;
+    const school: School | null =
+      species.look.swim.behaviour === 'schooling' && n > 1 ? { target: { x: 960, y: 500 }, retarget: 0, size: n } : null;
+    const fromLeft = this.rng() < 0.5;
+    const b = this.env.bounds;
+    const [d0, d1] = species.look.swim.depth;
+    const added: FishAgent[] = [];
+    for (let i = 0; i < n; i++) {
+      let spawn = opts.at;
+      if (opts.enter) {
+        const y = b.top + (b.bottom - b.top) * (d0 + (d1 - d0) * this.rng());
+        spawn = { x: fromLeft ? b.left - 160 - i * 40 : b.right + 160 + i * 40, y, facing: fromLeft ? 1 : -1 };
+      }
+      const a = new FishAgent(species, this.env, this.rng, spawn);
+      a.school = school;
+      added.push(a);
+    }
+    this.agents.push(...added);
+    this.sortByDepth();
+    return added;
+  }
+
   update(dt: number): void {
     for (const a of this.agents) a.update(dt, this.env, this.agents);
   }

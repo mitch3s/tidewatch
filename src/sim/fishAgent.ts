@@ -52,6 +52,8 @@ export class FishAgent {
     readonly species: Species,
     env: TankEnv,
     private readonly rng: () => number,
+    /** Start somewhere specific (e.g. swimming in from off-screen) instead of at random. */
+    spawn?: { x: number; y: number; facing: 1 | -1 },
   ) {
     this.z = lerp(0.85, 1.1, rng());
     this.length = species.displayLength * this.z;
@@ -64,9 +66,19 @@ export class FishAgent {
       this.pos = { x: env.home.x + lerp(-150, 150, rng()), y: env.home.y + lerp(-80, 40, rng()) };
     }
     this.facing = rng() < 0.5 ? 1 : -1;
+    if (spawn) {
+      this.pos = { x: spawn.x, y: spawn.y };
+      this.facing = spawn.facing;
+    }
     this.vel = { x: this.facing * this.cruise * 0.6, y: 0 };
     this.target = this.pickTarget(env);
     this.retarget = lerp(2, 8, rng());
+    if (spawn) {
+      // Swim well into the tank before doing anything else.
+      const b = env.bounds;
+      this.target = { x: spawn.facing > 0 ? lerp(b.left + 300, b.left + 700, rng()) : lerp(b.right - 700, b.right - 300, rng()), y: spawn.y };
+      this.retarget = 15;
+    }
     this.phase = rng() * TAU;
     this.finPhase = rng() * TAU;
     this.cur = this.pose(0);
@@ -122,21 +134,32 @@ export class FishAgent {
     ay += contain.y * maxSpeed * 3;
 
     const near: Vec[] = [];
+    // Cohesion pulls toward the whole school (so it doesn't split in two);
+    // alignment only follows nearby schoolmates.
+    const school: Vec[] = [];
     const mates: FishAgent[] = [];
     for (const o of all) {
       if (o === this) continue;
       const d = Math.hypot(o.pos.x - this.pos.x, o.pos.y - this.pos.y);
       if (d < (o.length + this.length) * 0.6) near.push(o.pos);
-      if (this.school && o.school === this.school && d < 260) mates.push(o);
+      if (this.school && o.school === this.school) {
+        school.push(o.pos);
+        if (d < 260) mates.push(o);
+      }
     }
+    // Only heading and walls decide whether to turn round; other fish just
+    // make it slow down or swerve up or down.
+    const turnIntentX = ax;
     const sep = separation(this.pos, near, this.length * 1.2);
-    ax += sep.x * maxSpeed * 2;
-    ay += sep.y * maxSpeed * 2;
+    ax += sep.x * maxSpeed * 1;
+    ay += sep.y * maxSpeed * 3;
 
-    if (this.school && mates.length) {
-      const coh = cohesion(this.pos, mates.map((m) => m.pos));
+    if (this.school && school.length) {
+      const coh = cohesion(this.pos, school);
       ax += coh.x * 0.9;
       ay += coh.y * 0.9;
+    }
+    if (mates.length) {
       const ali = alignment(this.vel, mates.map((m) => m.vel));
       ax += (ali.x - this.vel.x) * 0.8;
       ay += (ali.y - this.vel.y) * 0.8;
@@ -152,7 +175,7 @@ export class FishAgent {
       // Fish don't swim backwards: they turn round instead.
       if (this.vel.x * this.facing < 0) {
         this.vel.x = 0;
-        if (acc.x * this.facing < -maxAcc * 0.15 && this.turnCooldown <= 0) {
+        if (turnIntentX * this.facing < -maxAcc * 0.15 && this.turnCooldown <= 0) {
           this.turn = 0;
           this.glide = Math.max(this.cruise * 0.35, Math.abs(this.vel.x)) * 0.5;
         }

@@ -1,15 +1,21 @@
 import type { BiomeDef } from '../../data/biomes';
 import type { Species } from '../../data/types';
+import { CATCH_WINDOW_MS } from '../../game/game';
 import { Tank } from '../../sim/tank';
+import { VisitorSwimmer } from '../../sim/visitor';
 import { renderFish } from '../fish/renderFish';
 import { STAGE_HEIGHT, STAGE_WIDTH } from '../stage';
+import { createAmazonScenery } from './amazon';
 import { Bubbles } from './bubbles';
 import { Camera } from './camera';
 import { lightingAt } from './daynight';
 import { StaticLayer } from './layers';
 import { LightRays } from './lightRays';
-import { drawAnemone, SeaGrass } from './plants';
-import { layoutReef, paintFar, paintMid, type ReefLayout } from './reef';
+import { SeaGrass } from './plants';
+import { createReefScenery, type Scenery } from './reef';
+import { Sparkles } from './sparkles';
+import { TAU } from '../../util/math';
+import { createRng } from '../../util/rng';
 
 /** Parallax per layer: 0 = fixed to the screen, 1 = moves with the fish. */
 const PARALLAX = { far: 0.35, rays: 0.5, mid: 0.8, fish: 1, bubbles: 1.05, front: 1.25 } as const;
@@ -17,47 +23,58 @@ const PARALLAX = { far: 0.35, rays: 0.5, mid: 0.8, fish: 1, bubbles: 1.05, front
 export interface TankSceneOptions {
   /** Time of day in hours. Defaults to the device clock. */
   hour?: () => number;
+  /** Turn day/night lighting off (always daylight). */
+  dayNight?: () => boolean;
+}
+
+function sceneryFor(biome: BiomeDef): Scenery {
+  return biome.id === 'reef' ? createReefScenery(biome) : createAmazonScenery(biome);
 }
 
 /** One complete aquarium: scenery, lighting, fish and effects (spec 5.1). */
 export class TankScene {
   readonly camera = new Camera();
   readonly tank: Tank;
-  private readonly layout: ReefLayout;
+  visitor: VisitorSwimmer | null = null;
+  private readonly scenery: Scenery;
   private readonly far: StaticLayer;
   private readonly mid: StaticLayer;
   private readonly rays: LightRays;
   private readonly bubbles: Bubbles;
   private readonly grass: SeaGrass;
+  private readonly sparkles = new Sparkles();
   private readonly hour: () => number;
+  private readonly dayNight: () => boolean;
+  private readonly rng: () => number;
+  private time = 0;
 
   constructor(
     readonly biome: BiomeDef,
     species: readonly Species[],
     opts: TankSceneOptions = {},
   ) {
-    this.layout = layoutReef(biome);
-    this.far = new StaticLayer((ctx) => paintFar(ctx, biome));
-    this.mid = new StaticLayer((ctx) => paintMid(ctx, biome, this.layout));
+    this.scenery = sceneryFor(biome);
+    this.far = new StaticLayer((ctx) => this.scenery.paintFar(ctx));
+    this.mid = new StaticLayer((ctx) => this.scenery.paintMid(ctx));
     this.rays = new LightRays(biome.seed + 1);
-    this.bubbles = new Bubbles(this.layout.bubbleSources, biome.floor.y + 10, biome.seed + 2);
-    this.grass = new SeaGrass(biome.seed + 3, [
-      { x: 60, spread: 120, count: 16 },
-      { x: 1870, spread: 110, count: 14 },
-    ]);
-    const a = this.layout.anemone;
+    this.bubbles = new Bubbles(this.scenery.bubbleSources, biome.floor.y + 10, biome.seed + 2);
+    this.grass = new SeaGrass(biome.seed + 3, this.scenery.grass, biome.plants);
+    this.rng = createRng(biome.seed + 5 + Date.now());
     this.tank = new Tank(
       {
         bounds: { left: 60, right: STAGE_WIDTH - 60, top: 90, bottom: biome.floor.y - 30 },
-        home: { x: a.x, y: a.y - a.size * 0.55 },
+        home: this.scenery.home,
       },
       species,
       biome.seed + 4,
     );
-    this.hour = opts.hour ?? (() => {
-      const d = new Date();
-      return d.getHours() + d.getMinutes() / 60;
-    });
+    this.hour =
+      opts.hour ??
+      (() => {
+        const d = new Date();
+        return d.getHours() + d.getMinutes() / 60;
+      });
+    this.dayNight = opts.dayNight ?? (() => true);
   }
 
   /** Paint the static layers for the current backing-store scale. */
@@ -66,14 +83,49 @@ export class TankScene {
     this.mid.prepare(pixelScale);
   }
 
+  /** A newly collected species swims in from the side. */
+  addArrival(species: Species): void {
+    this.tank.addSpecies(species, { enter: true });
+  }
+
+  /** Start a rare visitor crossing the tank. */
+  startVisitor(species: Species): void {
+    this.visitor = new VisitorSwimmer(species, this.tank.env.bounds, CATCH_WINDOW_MS / 1000, this.rng);
+  }
+
+  /** The visitor was caught: sparkles, and it joins the tank where it is. */
+  catchVisitor(): void {
+    const v = this.visitor;
+    if (!v) return;
+    const p = v.position;
+    this.sparkles.burst(p.x, p.y);
+    const facing = v.poseAt(1).facing > 0 ? 1 : -1;
+    this.tank.addSpecies(v.species, { at: { x: p.x, y: p.y, facing } });
+    this.visitor = null;
+  }
+
+  /** Whether a screen point (stage coordinates) is on the visitor, for pointer catching. */
+  hitsVisitor(x: number, y: number): boolean {
+    if (!this.visitor) return false;
+    const w = this.camera.toWorld(x, y, PARALLAX.fish);
+    const p = this.visitor.position;
+    return Math.hypot(w.x - p.x, w.y - p.y) < Math.max(80, this.visitor.length * 0.7);
+  }
+
   update(dt: number): void {
+    this.time += dt;
     this.tank.update(dt);
     this.bubbles.update(dt);
+    this.sparkles.update(dt);
+    if (this.visitor) {
+      this.visitor.update(dt);
+      if (this.visitor.done) this.visitor = null;
+    }
   }
 
   render(ctx: CanvasRenderingContext2D, alpha: number, time: number): void {
     this.camera.update(time);
-    const light = lightingAt(this.hour());
+    const light = lightingAt(this.dayNight() ? this.hour() : 12);
     const withCamera = (parallax: number, draw: () => void) => {
       ctx.save();
       this.camera.apply(ctx, parallax);
@@ -85,11 +137,12 @@ export class TankScene {
     withCamera(PARALLAX.rays, () => this.rays.draw(ctx, time, this.biome.rays, light.rays));
     withCamera(PARALLAX.mid, () => {
       this.mid.draw(ctx);
-      const a = this.layout.anemone;
-      drawAnemone(ctx, a.x, a.y, a.size, time);
+      this.scenery.drawLive?.(ctx, time);
     });
     withCamera(PARALLAX.fish, () => {
       for (const agent of this.tank.agents) renderFish(ctx, agent.species.look, agent.poseAt(alpha));
+      if (this.visitor) this.drawVisitor(ctx, alpha, time);
+      this.sparkles.draw(ctx);
     });
     withCamera(PARALLAX.bubbles, () => this.bubbles.draw(ctx));
     withCamera(PARALLAX.front, () => this.grass.draw(ctx, time));
@@ -108,5 +161,25 @@ export class TankScene {
     v.addColorStop(1, 'rgba(0,8,20,0.45)');
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+  }
+
+  /** The visitor, with a soft pulsing glow so it stands out even at night. */
+  private drawVisitor(ctx: CanvasRenderingContext2D, alpha: number, time: number): void {
+    const v = this.visitor!;
+    const pose = v.poseAt(alpha);
+    const pulse = 0.5 + 0.5 * Math.sin(time * 2.4);
+    const r = v.length * (1.05 + 0.2 * pulse);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(pose.x, pose.y, 0, pose.x, pose.y, r);
+    g.addColorStop(0, `rgba(255,240,190,${(0.34 + 0.16 * pulse).toFixed(3)})`);
+    g.addColorStop(0.5, `rgba(255,230,160,${(0.12 + 0.06 * pulse).toFixed(3)})`);
+    g.addColorStop(1, 'rgba(255,240,190,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(pose.x, pose.y, r, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+    renderFish(ctx, v.species.look, pose);
   }
 }

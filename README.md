@@ -5,7 +5,7 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 - Design: [`docs/specs/2026-11-17-tidewatch-design.md`](docs/specs/2026-11-17-tidewatch-design.md)
 - Plan: [`docs/plans/2026-11-17-tidewatch-plan.md`](docs/plans/2026-11-17-tidewatch-plan.md)
 
-**Status:** Milestone 3 of 8 (the coral reef tank with three species).
+**Status:** Milestone 4 of 8. The game works: fish arrive over time, rare visitors can be caught, the Amazon tank unlocks, and progress is saved. All 12 species have first-draft looks (fine-tuned in Milestone 6).
 
 ## Getting started
 
@@ -28,15 +28,31 @@ Open the URL Vite prints (usually http://localhost:5173) in Chrome. The app is d
 | Red / Green / Yellow / Blue | 1 / 2 / 3 / 4 |
 | Magic Remote pointer | Mouse |
 
+### Controls
+
+| Action | Remote | Keyboard |
+|---|---|---|
+| Catch a rare visitor | OK | Enter (or click it) |
+| Switch tank | ◀ ▶ | ← → |
+
 ### Useful URLs
 
-- `/`: the reef tank with the starter fish (clownfish pair and a yellow tang).
-- `/?species=all`: every species drawn so far. `?species=blue-tang,yellow-tang` picks some.
-- `/?hour=21.5`: preview the lighting at a time of day (dawn, dusk and night follow the clock otherwise).
-- `/?fish=ocellaris-clownfish`: one species large and centred, swimming in place.
-- `/?fish=ocellaris-clownfish&still`: the same, frozen (for screenshots). Add `&turn=0.5` to see a turn stage.
+These debug flags work in development builds only (`npm run dev`, or a build made with `VITE_GOD_MODE=1`):
 
-More debug flags (time speed-up, forced visitors, god mode) arrive in Milestones 4–5.
+| URL | What it does |
+|---|---|
+| `/?timescale=600` | Game time runs 600× faster (1 real second = 10 game minutes) |
+| `/?visitor=now` | A rare visitor appears straight away |
+| `/?arrival=now` | The next fish arrives straight away |
+| `/?unlockAll` | Unlock every tank |
+| `/?collectAll` | Collect every species |
+| `/?reset` | Start from a fresh save |
+| `/?debug` | Show the timers and frame rate |
+
+Flags can be combined, e.g. `/?reset&visitor=now&debug`. These work in every build:
+
+- `/?hour=21.5`: preview the lighting at a time of day (otherwise it follows the clock).
+- `/?fish=ocellaris-clownfish`: one species large and centred, swimming in place. Add `&still` to freeze it and `&turn=0.5` to see a turn stage.
 
 ## Scripts
 
@@ -88,6 +104,11 @@ It checks webOS behaviour (Back key, app lifecycle), not TV performance.
 ```
 src/
   main.ts            entry point
+  app.ts             wires the game, tanks, input, saving and messages together
+  game/              the rules: arrivals, rare visitors, unlocks, game clock
+  save/              saved progress: format, checks, storage
+  ui/                on-screen messages and hints (HTML over the canvas)
+  dev/               debug URL flags (development builds only)
   input/             keyboard, remote and pointer → actions; idle tracking
   platform/          browser vs webOS differences
   render/stage.ts    1920×1080 canvas and game loop
@@ -96,6 +117,7 @@ src/
   render/perf.ts     drops to 30 fps on slow devices
   data/species/      one file per species
   data/biomes.ts     colours and settings per tank
+  data/progression.ts which fish each tank starts with, and how it unlocks
   sim/               fish movement: steering, schooling, population
 webos/               appinfo.json and icons
 scripts/             packaging

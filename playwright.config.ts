@@ -8,7 +8,8 @@ export default defineConfig({
     viewport: { width: 1920, height: 1080 },
   },
   webServer: {
-    command: 'npx vite build && npx vite preview --port 4173 --strictPort',
+    // Dev tools (URL flags) are needed by the tests, so build with them on.
+    command: 'VITE_GOD_MODE=1 npx vite build && npx vite preview --port 4173 --strictPort',
     url: 'http://localhost:4173',
     reuseExistingServer: true,
     timeout: 120_000,

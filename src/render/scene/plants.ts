@@ -17,9 +17,8 @@ interface Blade {
 export class SeaGrass {
   private readonly blades: Blade[] = [];
 
-  constructor(seed: number, clusters: Array<{ x: number; spread: number; count: number }>) {
+  constructor(seed: number, clusters: Array<{ x: number; spread: number; count: number }>, greens: string[]) {
     const rng = createRng(seed);
-    const greens = ['#2f7a4a', '#3f8f5a', '#4f9f63', '#2a6b45', '#5aa66b'];
     for (const c of clusters) {
       for (let i = 0; i < c.count; i++) {
         this.blades.push({

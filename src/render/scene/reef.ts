@@ -7,8 +7,9 @@ import type { BiomeDef } from '../../data/biomes';
 import { STAGE_HEIGHT, STAGE_WIDTH } from '../stage';
 import { lerp, TAU, type Vec } from '../../util/math';
 import { createRng } from '../../util/rng';
+import { drawAnemone } from './plants';
 
-type Rng = () => number;
+export type Rng = () => number;
 const W = STAGE_WIDTH;
 const H = STAGE_HEIGHT;
 /** Extra margin painted around layers so camera drift never shows an edge. */
@@ -70,9 +71,37 @@ function rockPath(r: Rock): Path2D {
   return p;
 }
 
+/** What a biome's scenery provides to the tank scene. */
+export interface Scenery {
+  paintFar(ctx: CanvasRenderingContext2D): void;
+  paintMid(ctx: CanvasRenderingContext2D): void;
+  /** Animated scenery drawn with the mid layer (e.g. the anemone). */
+  drawLive?(ctx: CanvasRenderingContext2D, time: number): void;
+  /** Where 'hover' fish like to stay. */
+  home?: Vec;
+  bubbleSources: number[];
+  grass: Array<{ x: number; spread: number; count: number }>;
+}
+
+export function createReefScenery(def: BiomeDef): Scenery {
+  const layout = layoutReef(def);
+  const a = layout.anemone;
+  return {
+    paintFar: (ctx) => paintFar(ctx, def),
+    paintMid: (ctx) => paintMid(ctx, def, layout),
+    drawLive: (ctx, time) => drawAnemone(ctx, a.x, a.y, a.size, time),
+    home: { x: a.x, y: a.y - a.size * 0.55 },
+    bubbleSources: layout.bubbleSources,
+    grass: [
+      { x: 60, spread: 120, count: 16 },
+      { x: 1870, spread: 110, count: 14 },
+    ],
+  };
+}
+
 // ---------------------------------------------------------------- far layer
 
-/** Water, glow from the surface, and distant reef silhouettes in the haze. */
+/** Water, glow from the surface, and distant silhouettes in the haze. Shared by all biomes. */
 export function paintFar(ctx: CanvasRenderingContext2D, def: BiomeDef): void {
   const rng = createRng(def.seed + 100);
   const g = ctx.createLinearGradient(0, -BLEED, 0, H + BLEED);
@@ -88,10 +117,10 @@ export function paintFar(ctx: CanvasRenderingContext2D, def: BiomeDef): void {
   ctx.fillStyle = glow;
   ctx.fillRect(-BLEED, -BLEED, W + 2 * BLEED, H + 2 * BLEED);
 
-  // Two rows of distant reef, fading into the haze.
+  // Two rows of distant scenery, fading into the haze.
   const rows: Array<{ base: number; height: number; alpha: number; color: string }> = [
-    { base: 860, height: 150, alpha: 0.35, color: '#1d5a74' },
-    { base: 905, height: 190, alpha: 0.55, color: '#174b63' },
+    { base: 860, height: 150, alpha: 0.35, color: def.farRows[0] },
+    { base: 905, height: 190, alpha: 0.55, color: def.farRows[1] },
   ];
   for (const row of rows) {
     const ph = [rng() * TAU, rng() * TAU, rng() * TAU];
@@ -174,7 +203,7 @@ export function paintMid(ctx: CanvasRenderingContext2D, def: BiomeDef, layout: R
   }
 }
 
-function sand(ctx: CanvasRenderingContext2D, def: BiomeDef, rng: Rng): void {
+export function sand(ctx: CanvasRenderingContext2D, def: BiomeDef, rng: Rng): void {
   const top = def.floor.y;
   const ph = rng() * TAU;
   const p = new Path2D();

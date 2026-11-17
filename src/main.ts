@@ -1,40 +1,17 @@
-import { BIOMES } from './data/biomes';
-import { ALL_SPECIES, getSpecies } from './data/species';
-import type { Species } from './data/types';
-import { IdleTracker } from './input/idle';
-import { InputManager } from './input';
-import { PointerInput } from './input/pointer';
+import { App } from './app';
+import { getSpecies } from './data/species';
+import { DEV_TOOLS } from './dev/enabled';
+import { parseDevFlags } from './dev/urlFlags';
 import { createPlatform } from './platform';
 import { renderFish, restPose } from './render/fish/renderFish';
-import { TankScene } from './render/scene/tankScene';
 import { STAGE_HEIGHT, STAGE_WIDTH, Stage } from './render/stage';
+import { defaultStore } from './save/storage';
 import { TAU } from './util/math';
 
 const params = new URLSearchParams(location.search);
 const host = document.getElementById('stage');
 if (!host) throw new Error('#stage element missing');
-
 const stage = new Stage(host);
-const platform = createPlatform();
-platform.keepAwake();
-
-/** The species that start in the reef tank (spec 4.3). */
-const STARTERS = ['ocellaris-clownfish', 'yellow-tang'];
-
-/**
- * `?species=all` shows every species drawn so far; `?species=a,b` picks some.
- * Until the game logic arrives (Milestone 4), the default is the starter fish.
- */
-function chosenSpecies(): Species[] {
-  const p = params.get('species');
-  if (p === 'all') return [...ALL_SPECIES];
-  const ids = p ? p.split(',') : STARTERS;
-  return ids.map((id) => {
-    const s = getSpecies(id.trim());
-    if (!s) throw new Error(`Unknown species: ${id}`);
-    return s;
-  });
-}
 
 const previewId = params.get('fish');
 if (previewId) {
@@ -65,42 +42,12 @@ if (previewId) {
     },
   });
 } else {
-  // `?hour=21.5` overrides the clock, to preview day/night lighting.
-  const hourParam = params.get('hour');
-  const scene = new TankScene(BIOMES.reef, chosenSpecies(), {
-    hour: hourParam !== null ? () => Number(hourParam) : undefined,
+  const hour = params.get('hour');
+  const app = new App(stage, createPlatform(), {
+    store: defaultStore(),
+    flags: DEV_TOOLS ? parseDevFlags(location.search) : null,
+    // `?hour=21.5` overrides the clock, to preview day/night lighting.
+    hour: hour !== null && Number.isFinite(Number(hour)) ? Number(hour) : undefined,
   });
-  scene.prepare(stage.pixelScale);
-  stage.onResize(() => scene.prepare(stage.pixelScale));
-
-  // Idle handling: the title fades out after 10 s without input (spec 5.1).
-  const idle = new IdleTracker(10_000, performance.now());
-  let uiAlpha = 1;
-  const input = new InputManager();
-  input.on((action) => {
-    idle.handle(action, performance.now());
-  });
-  const pointer = new PointerInput({ canvas: stage.canvas, toStage: (x, y) => stage.clientToStage(x, y) });
-  pointer.on(() => idle.poke(performance.now()));
-
-  stage.start({
-    update(dt) {
-      scene.update(dt);
-      idle.tick(performance.now());
-      uiAlpha += ((idle.isIdle ? 0 : 1) - uiAlpha) * Math.min(1, dt * 2);
-    },
-    render(ctx, alpha, time) {
-      scene.render(ctx, alpha, time);
-      if (uiAlpha > 0.01) {
-        ctx.globalAlpha = uiAlpha;
-        ctx.fillStyle = 'rgba(230,245,255,0.9)';
-        ctx.font = '600 44px system-ui, sans-serif';
-        ctx.fillText('Tidewatch', 72, 104);
-        ctx.font = '28px system-ui, sans-serif';
-        ctx.fillStyle = 'rgba(230,245,255,0.6)';
-        ctx.fillText(`Milestone 3 preview · ${scene.biome.name}`, 72, 146);
-        ctx.globalAlpha = 1;
-      }
-    },
-  });
+  app.start();
 }

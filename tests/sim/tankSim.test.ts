@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_SPECIES } from '../../src/data/species';
+import { ALL_SPECIES, speciesIn } from '../../src/data/species';
 import type { Species } from '../../src/data/types';
 import { Tank } from '../../src/sim/tank';
 
@@ -18,7 +18,7 @@ const schooler: Species = {
 };
 
 function tankCount(id: string): number {
-  return new Tank(env, [...ALL_SPECIES], 42).agents.filter((a) => a.species.id === id).length;
+  return new Tank(env, speciesIn('reef'), 42).agents.filter((a) => a.species.id === id).length;
 }
 
 function run(species: Species[], seconds: number, onStep?: (tank: Tank, t: number) => void): Tank {
@@ -58,7 +58,7 @@ describe('tank simulation (10 simulated minutes)', () => {
   it("doesn't turn back and forth constantly", () => {
     const turns = new Map<string, number[]>();
     const wasTurning = new Map<object, boolean>();
-    run([...ALL_SPECIES], 600, (tank) => {
+    run(speciesIn('reef'), 600, (tank) => {
       for (const a of tank.agents) {
         const now = a.turn !== null;
         if (now && !wasTurning.get(a)) {
@@ -80,6 +80,7 @@ describe('tank simulation (10 simulated minutes)', () => {
     expect(perFish.get('blue-tang')!).toBeLessThan(600 / 15);
     // Clownfish potter about near the anemone, but shouldn't fidget.
     expect(perFish.get('ocellaris-clownfish')!).toBeLessThan(600 / 8);
+    expect(perFish.get('moorish-idol')!).toBeLessThan(600 / 15);
   });
 
   it('keeps clownfish near the anemone', () => {
@@ -104,6 +105,6 @@ describe('tank simulation (10 simulated minutes)', () => {
       spreadSum += Math.max(...xs) - Math.min(...xs);
       n++;
     });
-    expect(spreadSum / n).toBeLessThan(600);
+    expect(spreadSum / n).toBeLessThan(450);
   });
 });
