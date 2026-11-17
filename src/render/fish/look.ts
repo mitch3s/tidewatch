@@ -97,8 +97,11 @@ export type PatternLayer =
       /** A bump on the band's front edge at height `v`; negative points toward the head. */
       bulge?: { v: number; amount: number; spread?: number };
     }
-  /** A stripe along the body at height `v`; thickness is in v units. */
-  | { type: 'stripe'; v: number; thickness: number; from: number; to: number; color: string; taper?: boolean }
+  /**
+   * A stripe along the body at height `v` (sloping to `vEnd` at the back,
+   * if given); thickness is in v units.
+   */
+  | { type: 'stripe'; v: number; vEnd?: number; thickness: number; from: number; to: number; color: string; taper?: boolean }
   /** Fill everything above or below `boundary` (in v units) between `from` and `to`. */
   | { type: 'region'; side: 'upper' | 'lower'; boundary: number; from: number; to: number; color: string }
   | {

@@ -5,6 +5,8 @@
  * Everything else draws in logical coordinates (0..1920, 0..1080).
  */
 
+import { PerfGuard } from './perf';
+
 export const STAGE_WIDTH = 1920;
 export const STAGE_HEIGHT = 1080;
 
@@ -33,6 +35,9 @@ export class Stage {
   private dpr = 1;
   private rafId = 0;
   private running = false;
+  private resizeListeners: Array<() => void> = [];
+  /** Drops rendering to 30 fps on slow devices. */
+  readonly perf = new PerfGuard();
 
   constructor(private readonly host: HTMLElement) {
     this.canvas = document.createElement('canvas');
@@ -59,6 +64,16 @@ export class Stage {
     this.canvas.style.height = `${cssH}px`;
     this.canvas.width = Math.round(cssW * this.dpr);
     this.canvas.height = Math.round(cssH * this.dpr);
+    for (const l of this.resizeListeners) l();
+  }
+
+  /** Backing-store pixels per logical pixel (for sizing offscreen layers). */
+  get pixelScale(): number {
+    return this.cssScale * this.dpr;
+  }
+
+  onResize(cb: () => void): void {
+    this.resizeListeners.push(cb);
   }
 
   /** Convert client (CSS) coordinates to logical stage coordinates. */
@@ -81,9 +96,14 @@ export class Stage {
     let last = performance.now();
     let acc = 0;
     const t0 = last;
+    let frameNo = 0;
 
     const frame = (now: number) => {
       if (!this.running) return;
+      this.rafId = requestAnimationFrame(frame);
+      // At 30 fps, skip every other display frame entirely.
+      if (this.perf.targetFps === 30 && frameNo++ % 2 === 1) return;
+      this.perf.sample(now - last);
       acc += Math.min((now - last) / 1000, SIM_STEP_S * MAX_STEPS_PER_FRAME);
       last = now;
       while (acc >= SIM_STEP_S) {
@@ -93,7 +113,6 @@ export class Stage {
       const s = this.cssScale * this.dpr;
       this.ctx.setTransform(s, 0, 0, s, 0, 0);
       cb.render(this.ctx, acc / SIM_STEP_S, (now - t0) / 1000);
-      this.rafId = requestAnimationFrame(frame);
     };
     this.rafId = requestAnimationFrame(frame);
   }

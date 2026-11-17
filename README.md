@@ -5,7 +5,7 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 - Design: [`docs/specs/2026-11-17-tidewatch-design.md`](docs/specs/2026-11-17-tidewatch-design.md)
 - Plan: [`docs/plans/2026-11-17-tidewatch-plan.md`](docs/plans/2026-11-17-tidewatch-plan.md)
 
-**Status:** Milestone 2 of 8 (one code-drawn clownfish swimming in open water).
+**Status:** Milestone 3 of 8 (the coral reef tank with three species).
 
 ## Getting started
 
@@ -30,8 +30,11 @@ Open the URL Vite prints (usually http://localhost:5173) in Chrome. The app is d
 
 ### Useful URLs
 
+- `/`: the reef tank with the starter fish (clownfish pair and a yellow tang).
+- `/?species=all`: every species drawn so far. `?species=blue-tang,yellow-tang` picks some.
+- `/?hour=21.5`: preview the lighting at a time of day (dawn, dusk and night follow the clock otherwise).
 - `/?fish=ocellaris-clownfish`: one species large and centred, swimming in place.
-- `/?fish=ocellaris-clownfish&still`: the same, frozen (for screenshots).
+- `/?fish=ocellaris-clownfish&still`: the same, frozen (for screenshots). Add `&turn=0.5` to see a turn stage.
 
 More debug flags (time speed-up, forced visitors, god mode) arrive in Milestones 4–5.
 
@@ -89,8 +92,11 @@ src/
   platform/          browser vs webOS differences
   render/stage.ts    1920×1080 canvas and game loop
   render/fish/       code-drawn fish: body, fins, patterns, renderer
+  render/scene/      the tank: scenery, light rays, bubbles, plants, camera, day/night
+  render/perf.ts     drops to 30 fps on slow devices
   data/species/      one file per species
-  sim/               fish movement
+  data/biomes.ts     colours and settings per tank
+  sim/               fish movement: steering, schooling, population
 webos/               appinfo.json and icons
 scripts/             packaging
 tests/               unit tests and Playwright tests

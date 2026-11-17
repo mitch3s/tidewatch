@@ -10,7 +10,7 @@ export const ocellarisClownfish: Species = {
   rarity: 'common',
   commonName: 'Ocellaris clownfish',
   scientificName: 'Amphiprion ocellaris',
-  displayLength: 110,
+  displayLength: 100,
   groupSize: [2, 2],
   look: {
     body: { template: 'oval', upper: 0.22, lower: 0.21, maxAt: 0.4, peduncle: 0.45, bluntness: 0.78 },

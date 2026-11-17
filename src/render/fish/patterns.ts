@@ -45,15 +45,16 @@ export function drawPattern(ctx: CanvasRenderingContext2D, layer: PatternLayer, 
       const n = 24;
       const path = new Path2D();
       const half = (s: number) => (layer.thickness / 2) * (layer.taper ? Math.pow(Math.sin(Math.PI * s), 0.5) : 1);
+      const vAt = (s: number) => lerp(layer.v, layer.vEnd ?? layer.v, s);
       for (let i = 0; i <= n; i++) {
         const s = i / n;
-        const q = body.point(lerp(layer.from, layer.to, s), layer.v - half(s));
+        const q = body.point(lerp(layer.from, layer.to, s), vAt(s) - half(s));
         if (i === 0) path.moveTo(q.x, q.y);
         else path.lineTo(q.x, q.y);
       }
       for (let i = n; i >= 0; i--) {
         const s = i / n;
-        const q = body.point(lerp(layer.from, layer.to, s), layer.v + half(s));
+        const q = body.point(lerp(layer.from, layer.to, s), vAt(s) + half(s));
         path.lineTo(q.x, q.y);
       }
       path.closePath();
