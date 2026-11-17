@@ -63,20 +63,42 @@ export class SeaGrass {
 
 /** A sea anemone with swaying tentacles: the clownfish's home. */
 export function drawAnemone(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, time: number): void {
-  // Column.
-  const colTop = y - size * 0.32;
-  const g = ctx.createLinearGradient(x - size * 0.4, 0, x + size * 0.4, 0);
-  g.addColorStop(0, '#7a3f62');
-  g.addColorStop(0.5, '#b0628c');
-  g.addColorStop(1, '#6d3757');
+  // Contact shadow on the rock.
+  const sy = y + size * 0.07;
+  const shadow = ctx.createRadialGradient(x, sy, 0, x, sy, size * 0.6);
+  shadow.addColorStop(0, 'rgba(10,5,25,0.4)');
+  shadow.addColorStop(1, 'rgba(10,5,25,0)');
+  ctx.fillStyle = shadow;
+  ctx.beginPath();
+  ctx.ellipse(x, sy, size * 0.6, size * 0.08, 0, 0, TAU);
+  ctx.fill();
+
+  // Column, flaring into a foot (pedal disc) that grips the rock.
+  const colTop = y - size * 0.34;
+  const g = ctx.createLinearGradient(x - size * 0.45, 0, x + size * 0.45, 0);
+  g.addColorStop(0, '#6e3858');
+  g.addColorStop(0.5, '#ad5f8a');
+  g.addColorStop(1, '#64324f');
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.moveTo(x - size * 0.3, y);
-  ctx.quadraticCurveTo(x - size * 0.32, y - size * 0.2, x - size * 0.45, colTop);
+  ctx.moveTo(x - size * 0.46, y + size * 0.03);
+  ctx.quadraticCurveTo(x - size * 0.26, y - size * 0.02, x - size * 0.27, y - size * 0.14);
+  ctx.quadraticCurveTo(x - size * 0.3, y - size * 0.26, x - size * 0.45, colTop);
   ctx.lineTo(x + size * 0.45, colTop);
-  ctx.quadraticCurveTo(x + size * 0.32, y - size * 0.2, x + size * 0.3, y);
+  ctx.quadraticCurveTo(x + size * 0.3, y - size * 0.26, x + size * 0.27, y - size * 0.14);
+  ctx.quadraticCurveTo(x + size * 0.26, y - size * 0.02, x + size * 0.46, y + size * 0.03);
+  ctx.quadraticCurveTo(x, y + size * 0.09, x - size * 0.46, y + size * 0.03);
   ctx.closePath();
   ctx.fill();
+  // Faint vertical ridges on the column.
+  ctx.strokeStyle = 'rgba(60,20,45,0.25)';
+  ctx.lineWidth = size * 0.012;
+  for (let i = -3; i <= 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x + i * size * 0.07, colTop + size * 0.02);
+    ctx.quadraticCurveTo(x + i * size * 0.055, y - size * 0.15, x + i * size * 0.11, y + size * 0.02);
+    ctx.stroke();
+  }
 
   // Tentacles: back row first (darker), then the front row.
   const rows = [

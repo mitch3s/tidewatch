@@ -38,16 +38,14 @@ export function layoutReef(def: BiomeDef): ReefLayout {
     baseY: base,
     phases: [rng() * TAU, rng() * TAU, rng() * TAU],
   });
+  // Big formations at the sides keep the middle of the tank open for fish.
+  const rocks = [rock(150, 560, 330), rock(470, 300, 165), rock(1760, 600, 380), rock(1460, 300, 150), rock(1150, 240, 80)];
+  // The anemone grows on the top of the small middle rock, its foot slightly
+  // sunk into the surface so it never looks like it's floating.
+  const top = rockPoint(rocks[4]!, 0.5);
   return {
-    // Big formations at the sides keep the middle of the tank open for fish.
-    rocks: [
-      rock(150, 560, 330),
-      rock(470, 300, 165),
-      rock(1760, 600, 380),
-      rock(1460, 300, 150),
-      rock(1150, 240, 80),
-    ],
-    anemone: { x: 1150, y: base - 92, size: 120 },
+    rocks,
+    anemone: { x: top.x, y: top.y + 18, size: 120 },
     bubbleSources: [430, 1530, 860],
   };
 }
