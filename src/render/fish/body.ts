@@ -41,6 +41,23 @@ export interface Body {
   point(u: number, v: number): Vec;
   /** Closed outline: along the top from nose to tail, back along the bottom. */
   outline(samples: number): Vec[];
+  /**
+   * The body as a strip of quads, all wound the same way. Filling these
+   * (instead of the outline) leaves no holes while the body is folded
+   * over itself mid-turn.
+   */
+  segments(samples: number): Vec[][];
+}
+
+/**
+ * Turning. A fish turns by swinging its head round first, with the body
+ * following. Seen from the side, each part of the body is foreshortened by
+ * how far it has turned: `yaw` 0 faces the original way, π faces the
+ * opposite way (the same as a mirrored fish).
+ */
+export interface Yaw {
+  head: number;
+  tail: number;
 }
 
 /**
@@ -48,7 +65,7 @@ export interface Body {
  * @param phase swim phase in radians (advances with the tail beat)
  * @param flex  sideways bend at the tail, in body lengths
  */
-export function makeBody(shape: ResolvedBody, phase: number, flex: number): Body {
+export function makeBody(shape: ResolvedBody, phase: number, flex: number, yaw: Yaw = { head: 0, tail: 0 }): Body {
   const { upper, lower, maxAt, peduncle, bluntness } = shape;
   // Blunt heads rise steeply from the nose (small exponent).
   const headExp = 1.1 - 0.8 * bluntness;
@@ -66,16 +83,26 @@ export function makeBody(shape: ResolvedBody, phase: number, flex: number): Body
   const dispDu = (u: number) =>
     flex * (2 * u * Math.sin(phase - u * WAVE_K) - u * u * WAVE_K * Math.cos(phase - u * WAVE_K));
 
-  const spine = (u: number): Vec => ({ x: 0.5 - u, y: disp(u) });
+  // Yaw varies linearly from head to tail; x is the integral of cos(yaw)
+  // along the body, centred so the middle of the body stays put.
+  const yawK = yaw.tail - yaw.head;
+  const yawAt = (u: number) => yaw.head + yawK * u;
+  const along = (u: number) =>
+    Math.abs(yawK) < 1e-6 ? u * Math.cos(yaw.head) : (Math.sin(yaw.head + yawK * u) - Math.sin(yaw.head)) / yawK;
+  const mid = along(0.5);
+
+  const spine = (u: number): Vec => ({ x: -(along(u) - mid), y: disp(u) });
+  /** Tangent toward the tail, foreshortened by the yaw (so not always unit length). */
   const tangent = (u: number): Vec => {
-    const dx = -1;
     const dy = dispDu(u);
-    const len = Math.hypot(dx, dy);
-    return { x: dx / len, y: dy / len };
+    const len = Math.hypot(1, dy);
+    return { x: -Math.cos(yawAt(u)) / len, y: dy / len };
   };
+  /** Normal toward the belly. Turning doesn't change which way is down. */
   const normal = (u: number): Vec => {
-    const t = tangent(u);
-    return { x: t.y, y: -t.x };
+    const dy = dispDu(u);
+    const len = Math.hypot(1, dy);
+    return { x: (dy * Math.cos(yawAt(u))) / len, y: 1 / len };
   };
   const halfHeight = (u: number, side: -1 | 1) => (side < 0 ? upper : lower) * profile(u);
 
@@ -96,5 +123,24 @@ export function makeBody(shape: ResolvedBody, phase: number, flex: number): Body
     return pts;
   };
 
-  return { halfHeight, spine, tangent, normal, point, outline };
+  const segments = (samples: number): Vec[][] => {
+    const quads: Vec[][] = [];
+    let prevU = 0;
+    for (let i = 1; i <= samples; i++) {
+      const u = Math.pow(i / samples, 1.4);
+      const quad = [point(prevU, -1), point(u, -1), point(u, 1), point(prevU, 1)];
+      // Shoelace area; flip quads that point the other way (folded parts).
+      let area = 0;
+      for (let j = 0; j < 4; j++) {
+        const a = quad[j]!;
+        const b = quad[(j + 1) % 4]!;
+        area += a.x * b.y - b.x * a.y;
+      }
+      quads.push(area < 0 ? quad.reverse() : quad);
+      prevU = u;
+    }
+    return quads;
+  };
+
+  return { halfHeight, spine, tangent, normal, point, outline, segments };
 }

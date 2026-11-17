@@ -2,7 +2,7 @@ import { makeBody, resolveBody, type ResolvedBody } from './body';
 import { finGeometry, type FinFrame } from './fins';
 import type { Fin, FishLook } from './look';
 import { drawPattern } from './patterns';
-import { TAU } from '../../util/math';
+import { clamp, smoothstep, TAU } from '../../util/math';
 
 /** Where a fish is and what its body is doing this frame. */
 export interface FishPose {
@@ -24,6 +24,18 @@ export interface FishPose {
   flex: number;
   /** Pectoral fin flap phase in radians. */
   finPhase: number;
+  /**
+   * Progress of a turn, 0..1 (0 = not turning). The head swings round first
+   * and the tail follows; at 1 the fish faces the other way, so the caller
+   * then flips `facing` and resets this to 0.
+   */
+  turn?: number;
+}
+
+/** Head and tail yaw for a turn in progress. */
+export function turnYaw(turn: number): { head: number; tail: number } {
+  const ease = (t: number) => smoothstep(clamp(t, 0, 1));
+  return { head: Math.PI * ease(turn * 1.6), tail: Math.PI * ease(turn * 1.6 - 0.6) };
 }
 
 export interface RenderOptions {
@@ -58,7 +70,10 @@ export function renderFish(
 ): void {
   if (Math.abs(pose.facing) < 0.01 || pose.length <= 0) return;
   const shape = bodyShapeOf(look);
-  const body = makeBody(shape, pose.phase, pose.flex);
+  const turn = pose.turn ?? 0;
+  const body = makeBody(shape, pose.phase, pose.flex, turnYaw(turn));
+  // How folded the body is mid-turn (0 = straight, 1 = most folded).
+  const fold = Math.sin(Math.PI * clamp(turn, 0, 1));
   const px = 1 / pose.length; // one canvas pixel, in body units
   const detailed = pose.length >= 60;
   const frame: FinFrame = { phase: pose.phase, flex: pose.flex, finPhase: pose.finPhase };
@@ -69,9 +84,17 @@ export function renderFish(
   ctx.rotate(pose.facing < 0 ? -pose.pitch : pose.pitch);
   ctx.scale(pose.length * pose.facing, pose.length);
 
+  const samples = detailed ? 40 : 20;
+  // Filled as a strip of consistently wound quads, so a body folded over
+  // itself mid-turn has no holes. The outline is only used for the rim.
   const bodyPath = new Path2D();
-  body.outline(detailed ? 40 : 20).forEach((q, i) => (i === 0 ? bodyPath.moveTo(q.x, q.y) : bodyPath.lineTo(q.x, q.y)));
-  bodyPath.closePath();
+  for (const quad of body.segments(samples)) {
+    quad.forEach((q, i) => (i === 0 ? bodyPath.moveTo(q.x, q.y) : bodyPath.lineTo(q.x, q.y)));
+    bodyPath.closePath();
+  }
+  const rimPath = new Path2D();
+  body.outline(samples).forEach((q, i) => (i === 0 ? rimPath.moveTo(q.x, q.y) : rimPath.lineTo(q.x, q.y)));
+  rimPath.closePath();
 
   const drawFin = (fin: Fin) => {
     const g = finGeometry(fin, body, frame);
@@ -158,13 +181,16 @@ export function renderFish(
       if (layer.type === 'outline') {
         ctx.strokeStyle = layer.color;
         ctx.lineWidth = layer.width;
-        ctx.stroke(bodyPath);
+        ctx.stroke(rimPath);
       }
     }
     // A faint darker rim keeps the fish readable against any background.
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth = 1.2 * px;
-    ctx.stroke(bodyPath);
+    // (Faded out mid-turn, when the outline crosses over the body.)
+    if (fold < 0.95) {
+      ctx.strokeStyle = `rgba(0,0,0,${(0.25 * (1 - fold)).toFixed(3)})`;
+      ctx.lineWidth = 1.2 * px;
+      ctx.stroke(rimPath);
+    }
 
     // Eye.
     const { eye } = look;

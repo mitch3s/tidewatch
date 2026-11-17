@@ -75,3 +75,41 @@ describe('makeBody', () => {
     expect(first.y).toBeCloseTo(last.y, 6);
   });
 });
+
+describe('turning (yaw)', () => {
+  it('a full turn mirrors the fish', () => {
+    const b = makeBody(shape, 0, 0, { head: Math.PI, tail: Math.PI });
+    expect(b.spine(0).x).toBeCloseTo(-0.5, 9);
+    expect(b.spine(1).x).toBeCloseTo(0.5, 9);
+    // Heights don't change when turning.
+    expect(b.point(0.4, -1).y).toBeCloseTo(-0.2, 6);
+  });
+
+  it('mid-turn, the head has swung round before the tail', () => {
+    const b = makeBody(shape, 0, 0, { head: Math.PI * 0.75, tail: Math.PI * 0.25 });
+    // Head is pointing back the other way: it sits behind the body's middle...
+    expect(b.tangent(0).x).toBeGreaterThan(0);
+    // ...while the tail still points the original way.
+    expect(b.tangent(1).x).toBeLessThan(0);
+  });
+
+  it('keeps the middle of the body in place while turning', () => {
+    for (const head of [0, 0.5, 1.5, 3]) {
+      const b = makeBody(shape, 0, 0, { head, tail: head * 0.4 });
+      expect(b.spine(0.5).x).toBeCloseTo(0, 9);
+    }
+  });
+
+  it('winds every body segment the same way, even when folded', () => {
+    const b = makeBody(shape, 0, 0, { head: Math.PI * 0.9, tail: Math.PI * 0.1 });
+    for (const q of b.segments(24)) {
+      let area = 0;
+      for (let j = 0; j < 4; j++) {
+        const a = q[j]!;
+        const c = q[(j + 1) % 4]!;
+        area += a.x * c.y - c.x * a.y;
+      }
+      expect(area).toBeGreaterThanOrEqual(0);
+    }
+  });
+});

@@ -27,17 +27,20 @@ function drawWater(ctx: CanvasRenderingContext2D): void {
 }
 
 // `?fish=<id>`: show one species large and centred (screenshots, and the
-// starting point for the god-mode fish lab). Add `&still` to freeze it.
+// starting point for the god-mode fish lab). Add `&still` to freeze it, and
+// `&turn=0..1` to see a stage of turning around.
 const previewId = params.get('fish');
 if (previewId) {
   const species = getSpecies(previewId);
   if (!species) throw new Error(`Unknown species: ${previewId}`);
   const still = params.has('still');
+  const turn = Number(params.get('turn') ?? 0);
   stage.start({
     update() {},
     render(ctx, _alpha, time) {
       drawWater(ctx);
       const pose = restPose(STAGE_WIDTH / 2 + 40, STAGE_HEIGHT / 2, 900);
+      pose.turn = turn;
       if (!still) {
         pose.phase = time * species.look.swim.tailHz * TAU * 0.5;
         pose.finPhase = time * 1.6 * TAU * 0.5;
