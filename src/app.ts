@@ -6,6 +6,7 @@ import { DEV_TOOLS } from './dev/enabled';
 import { GodMode, type GodHost } from './dev/godMode';
 import type { DevFlags } from './dev/urlFlags';
 import { RuntimeClock } from './game/clock';
+import { TankRotation } from './game/rotation';
 import { CATCH_WINDOW_MS, Game, type GameEvent } from './game/game';
 import type { Action } from './input/actions';
 import { IdleTracker } from './input/idle';
@@ -13,8 +14,10 @@ import { InputManager } from './input';
 import { PointerInput } from './input/pointer';
 import type { Platform } from './platform';
 import { type DebugView, TankScene } from './render/scene/tankScene';
-import { STAGE_HEIGHT, STAGE_WIDTH, type Stage } from './render/stage';
+import type { Stage } from './render/stage';
+import { createInitialState, type RotationMinutes } from './save/schema';
 import { clearSave, type KeyValueStore, loadSave, writeSave } from './save/storage';
+import { CodexScreen } from './ui/codex';
 import { escapeHtml, UiRoot } from './ui/root';
 import { Toasts } from './ui/toast';
 import { VisitorHint } from './ui/visitorHint';
@@ -22,8 +25,11 @@ import { createRng } from './util/rng';
 
 /** Save at least this often while running (timers tick down constantly). */
 const AUTOSAVE_MS = 30_000;
-/** Fade-through-dark when switching tanks, in seconds (each half). */
-const SWITCH_FADE_S = 0.35;
+/** Cross-fade between tanks, in seconds: quicker when you switch by hand. */
+const SWITCH_MANUAL_S = 0.8;
+const SWITCH_AUTO_S = 2.5;
+/** The codex closes itself after this long without input (OLED burn-in). */
+const CODEX_IDLE_CLOSE_MS = 90_000;
 
 export interface AppOptions {
   store: KeyValueStore;
@@ -59,9 +65,12 @@ export class App implements GodHost {
   private readonly god: GodMode | null = null;
   private sinceSave = 0;
   private dirty = false;
-  /** Tank switch in progress: fading out to `to`, or back in. */
-  private switching: { to: BiomeId; t: number } | null = null;
-  private fade = 0;
+  /** Tank cross-fade in progress. */
+  private switching: { from: BiomeId; to: BiomeId; t: number; duration: number } | null = null;
+  private fadeCanvas: HTMLCanvasElement | null = null;
+  private readonly rotation = new TankRotation();
+  private codex: CodexScreen | null = null;
+  private lastInputAt = performance.now();
   private time = 0;
 
   constructor(
@@ -98,6 +107,7 @@ export class App implements GodHost {
     const pointer = new PointerInput({ canvas: stage.canvas, toStage: (x, y) => stage.clientToStage(x, y) });
     pointer.on((e) => {
       this.idle.poke(performance.now());
+      this.lastInputAt = performance.now();
       if (e.kind === 'down' && !e.overUi && this.scene().hitsVisitor(e.x, e.y)) this.tryCatch();
     });
 
@@ -123,12 +133,15 @@ export class App implements GodHost {
     this.time += dt;
     const realMs = dt * 1000;
     const gameMs = this.clock.advance(realMs);
-    this.game.tick(gameMs, realMs, { biome: this.current, visitorsAllowed: this.switching === null });
+    this.game.tick(gameMs, realMs, { biome: this.current, visitorsAllowed: this.switching === null && this.codex === null });
 
     for (const s of this.scenes.values()) s.update(dt);
     this.idle.tick(performance.now());
     if (this.idleDisabled) this.ui.setIdle(false);
     this.god?.update(dt);
+    this.codex?.update(dt);
+    if (this.codex && performance.now() - this.lastInputAt > CODEX_IDLE_CLOSE_MS) this.closeCodex();
+    this.updateRotation(dt);
     this.updateSwitch(dt);
 
     const v = this.game.activeVisitor;
@@ -144,11 +157,31 @@ export class App implements GodHost {
       this.renderOverride(ctx, alpha, time);
       return;
     }
-    this.scene().render(ctx, alpha, time);
-    if (this.fade > 0.001) {
-      ctx.fillStyle = `rgba(0,0,0,${this.fade.toFixed(3)})`;
-      ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+    const sw = this.switching;
+    if (!sw) {
+      this.scene().render(ctx, alpha, time);
+      return;
     }
+    // Cross-fade: the old tank, with the new one drawn over it, fading in.
+    this.scene(sw.from).render(ctx, alpha, time);
+    const c = this.stage.canvas;
+    if (!this.fadeCanvas) this.fadeCanvas = document.createElement('canvas');
+    const fc = this.fadeCanvas;
+    if (fc.width !== c.width || fc.height !== c.height) {
+      fc.width = c.width;
+      fc.height = c.height;
+    }
+    const fctx = fc.getContext('2d');
+    if (!fctx) return;
+    const s = this.stage.pixelScale;
+    fctx.setTransform(s, 0, 0, s, 0, 0);
+    this.scene(sw.to).render(fctx, alpha, time);
+    const t = Math.min(1, sw.t / sw.duration);
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = t * t * (3 - 2 * t);
+    ctx.drawImage(fc, 0, 0);
+    ctx.restore();
   }
 
   // ---------------------------------------------------------------- tanks
@@ -178,6 +211,7 @@ export class App implements GodHost {
   switchTo(biome: BiomeId): void {
     this.currentBiome = biome;
     this.switching = null;
+    this.rotation.reset();
     this.scene();
     this.updateBrand();
   }
@@ -190,34 +224,83 @@ export class App implements GodHost {
     this.updateBrand();
   }
 
-  private switchTank(delta: 1 | -1): void {
+  private switchTank(delta: 1 | -1, duration = SWITCH_MANUAL_S): void {
     const unlocked = BIOME_ORDER.filter((b) => this.game.state.unlockedBiomes.includes(b));
-    if (unlocked.length < 2 || this.switching) return;
+    if (unlocked.length < 2) return;
+    // Pressing again mid-fade finishes that fade at once, so quick presses never feel ignored.
+    this.switching = null;
     const i = unlocked.indexOf(this.current);
     const to = unlocked[(i + delta + unlocked.length) % unlocked.length]!;
-    this.switching = { to, t: 0 };
+    this.scene(to); // make sure it exists (and is painted) before fading in
+    this.switching = { from: this.current, to, t: 0, duration };
+    this.currentBiome = to;
+    this.rotation.reset();
+    this.updateBrand();
   }
 
   private updateSwitch(dt: number): void {
-    if (!this.switching) {
-      this.fade = Math.max(0, this.fade - dt / SWITCH_FADE_S);
-      return;
-    }
+    if (!this.switching) return;
     this.switching.t += dt;
-    this.fade = Math.min(1, this.switching.t / SWITCH_FADE_S);
-    if (this.fade >= 1) {
-      this.currentBiome = this.switching.to;
-      this.switching = null;
-      this.scene();
-      this.updateBrand();
-    }
+    if (this.switching.t >= this.switching.duration) this.switching = null;
+  }
+
+  /** Automatic tank rotation (spec 5.1): not while a visitor is here or the codex is open. */
+  private updateRotation(dt: number): void {
+    const v = this.game.activeVisitor;
+    const due = this.rotation.update(dt, {
+      minutes: this.game.state.settings.rotationMin,
+      tanks: this.game.state.unlockedBiomes.length,
+      hold: this.codex !== null || this.switching !== null || (v !== null && v.biome === this.current),
+    });
+    if (due) this.switchTank(1, SWITCH_AUTO_S);
+  }
+
+  // ---------------------------------------------------------------- codex
+
+  private openCodex(): void {
+    if (this.codex) return;
+    const app = this;
+    this.codex = new CodexScreen(
+      this.ui,
+      {
+        get state() {
+          return app.game.state;
+        },
+        setRotation: (min: RotationMinutes) => this.game.setSettings({ rotationMin: min }),
+        setDayNight: (on: boolean) => this.game.setSettings({ dayNight: on }),
+        resetProgress: () => {
+          this.game.replaceState(createInitialState(ALL_SPECIES, createRng(Date.now())));
+          this.rebuildScenes();
+          this.save();
+        },
+        exitApp: () => this.platform.exitApp(),
+        canExit: this.platform.name === 'webos',
+        onClose: () => this.closeCodex(),
+      },
+      this.current,
+      () => this.stage.pixelScale,
+    );
+    this.ui.el.classList.add('tw-codex-open');
+  }
+
+  private closeCodex(): void {
+    this.codex?.close();
+    this.codex = null;
+    this.ui.el.classList.remove('tw-codex-open');
+    this.save();
   }
 
   // ---------------------------------------------------------------- input
 
   private onAction(action: Action): void {
+    this.lastInputAt = performance.now();
     if (this.god?.handleAction(action, performance.now())) {
       this.idle.poke(performance.now());
+      return;
+    }
+    if (this.codex) {
+      this.idle.poke(performance.now());
+      if (!this.codex.handle(action)) this.closeCodex();
       return;
     }
     const v = this.game.activeVisitor;
@@ -233,8 +316,11 @@ export class App implements GodHost {
       case 'right':
         this.switchTank(1);
         break;
+      case 'up':
+      case 'back':
+        this.openCodex();
+        break;
       default:
-        // Codex, menus and god mode arrive in later milestones.
         break;
     }
   }
@@ -286,7 +372,7 @@ export class App implements GodHost {
         this.toasts.show({
           kicker: 'New tank discovered',
           title: BIOMES[e.biome].name,
-          body: 'Press ◀ ▶ to visit',
+          body: 'Press ◀ ▶ to visit, or ▲ to see it in the codex',
         });
         this.updateBrand();
         this.save();

@@ -129,6 +129,12 @@ export class Game {
     this.changed();
   }
 
+  /** Change a setting (codex settings page). */
+  setSettings(patch: Partial<SaveState['settings']>): void {
+    Object.assign(this.state.settings, patch);
+    this.changed();
+  }
+
   /** Lock a tank again (god mode). The last unlocked tank stays unlocked. */
   lockBiome(biome: BiomeId): void {
     if (this.state.unlockedBiomes.length <= 1) return;

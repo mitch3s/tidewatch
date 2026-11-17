@@ -5,7 +5,7 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 - Design: [`docs/specs/2026-11-17-tidewatch-design.md`](docs/specs/2026-11-17-tidewatch-design.md)
 - Plan: [`docs/plans/2026-11-17-tidewatch-plan.md`](docs/plans/2026-11-17-tidewatch-plan.md)
 
-**Status:** Milestone 6 of 8. The game works, god mode is in place, and all 12 species are tuned, with sourced codex facts. Both tanks have full scenery.
+**Status:** Milestone 7 of 8. The whole app works with a remote: the aquarium, collecting, the codex and settings. Next is testing on a real TV (Milestone 8).
 
 ## Getting started
 
@@ -34,6 +34,12 @@ Open the URL Vite prints (usually http://localhost:5173) in Chrome. The app is d
 |---|---|---|
 | Catch a rare visitor | OK | Enter (or click it) |
 | Switch tank | ◀ ▶ | ← → |
+| Open the codex | ▲ or Back | ↑ or Escape |
+| In the codex: move / open / close | arrows / OK / Back | arrows / Enter / Escape |
+
+After 10 seconds without input the on-screen text fades out; the first key press after that only wakes it. The codex closes itself after 90 seconds without input, so nothing static stays on screen.
+
+The codex's **Settings** tab sets automatic tank switching (off, 5, 15 or 30 minutes), turns day and night lighting on or off, and can reset progress. On the TV it also has Exit.
 
 ### Useful URLs
 
@@ -120,7 +126,7 @@ src/
   app.ts             wires the game, tanks, input, saving and messages together
   game/              the rules: arrivals, rare visitors, unlocks, game clock
   save/              saved progress: format, checks, storage
-  ui/                on-screen messages and hints (HTML over the canvas)
+  ui/                codex, settings, messages and hints (HTML over the canvas); D-pad focus; range map
   dev/               god mode, fish lab and debug URL flags (development builds only)
   input/             keyboard, remote and pointer → actions; idle tracking
   platform/          browser vs webOS differences
@@ -133,6 +139,7 @@ src/
   data/biomes.ts     colours and settings per tank
   data/progression.ts which fish each tank starts with, and how it unlocks
   sim/               fish movement: steering, schooling, population
+  assets/            world map outline for the codex (built by scripts/build-world-map.mjs)
 webos/               appinfo.json and icons
 scripts/             packaging
 tests/               unit tests and Playwright tests
