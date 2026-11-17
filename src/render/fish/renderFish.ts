@@ -215,8 +215,9 @@ export function renderFish(
 
     // Mouth.
     if (detailed) {
+      const mouth = look.mouth ?? { length: 0.035, slope: -1.6 };
       const m0 = body.point(0.005, 0.18);
-      const m1 = body.point(0.04, 0.12);
+      const m1 = { x: m0.x - mouth.length, y: m0.y + mouth.slope * mouth.length };
       ctx.strokeStyle = 'rgba(0,0,0,0.35)';
       ctx.lineWidth = 1.5 * px;
       ctx.lineCap = 'round';
@@ -224,6 +225,30 @@ export function renderFish(
       ctx.moveTo(m0.x, m0.y);
       ctx.lineTo(m1.x, m1.y);
       ctx.stroke();
+    }
+
+    // Barbels: fine whiskers hanging from the mouth.
+    if (look.barbels && pose.length >= 40) {
+      const b = look.barbels;
+      const root = body.point(0.02, 0.45);
+      ctx.strokeStyle = b.color ?? 'rgba(60,45,30,0.75)';
+      ctx.lineWidth = Math.max(1.2 * px, 0.006);
+      ctx.lineCap = 'round';
+      for (let i = 0; i < b.count; i++) {
+        const spread = b.count > 1 ? i / (b.count - 1) - 0.5 : 0;
+        const sway = Math.sin(pose.finPhase * 0.7 + i) * 0.15;
+        // Pointing down and forward from the chin.
+        const ang = Math.PI / 2 - 0.55 + spread * 0.8 + sway;
+        ctx.beginPath();
+        ctx.moveTo(root.x, root.y);
+        ctx.quadraticCurveTo(
+          root.x + Math.cos(ang - 0.4) * b.length * 0.5,
+          root.y + Math.sin(ang - 0.4) * b.length * 0.5,
+          root.x + Math.cos(ang) * b.length,
+          root.y + Math.sin(ang) * b.length,
+        );
+        ctx.stroke();
+      }
     }
   }
 

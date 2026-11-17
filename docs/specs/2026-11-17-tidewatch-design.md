@@ -39,7 +39,7 @@ Third-party webOS apps cannot replace the TV's system screensaver, so this is a 
 | Amazon river | Neon tetra | *Paracheirodon innesi* | Common |
 | Amazon river | Bronze corydoras | *Corydoras aeneus* | Common |
 | Amazon river | Freshwater angelfish | *Pterophyllum scalare* | Uncommon |
-| Amazon river | Discus | *Symphysodon* spp. | Uncommon |
+| Amazon river | Blue discus | *Symphysodon aequifasciatus* | Uncommon |
 | Amazon river | Zebra pleco | *Hypancistrus zebra* | Rare visitor |
 | Amazon river | Silver arowana | *Osteoglossum bicirrhosum* | Rare visitor |
 
@@ -91,7 +91,8 @@ All codex facts are checked against a cited source (FishBase as the primary sour
 - A large live-rendered fish swimming in a small window.
 - Common name, scientific name, rarity badge, the date collected.
 - **Native range:** a simplified world map with the native region highlighted (one SVG world map, with a region polygon or bounding area per species).
-- Facts: habitat, adult size, diet, temperament, water type and temperature.
+- Facts: habitat, maximum size, diet, water type, and temperature where a source gives it.
+  *(Changed in Milestone 6: temperament was dropped, because it's aquarium-hobby opinion rather than something the sources state.)*
 - 2–3 **fun facts**.
 - Sources, in small print.
 - **Left and Right** move to the previous and next entry, and **Back** returns to the grid.
@@ -197,16 +198,15 @@ interface Species {
   scientificName: string;
   look: FishLook;             // rendering parameters (section 6)
   groupSize: [number, number];
-  codex: {
+  codex: {                    // kept in src/data/codex.ts, joined to the species
     nativeRange: string;      // "Eastern Indian Ocean & Western Pacific"
-    rangeMap: RangeShape;     // region(s) to highlight on the world map
+    range: [lon, lat][][];    // rough polygon(s) to highlight on the world map
     habitat: string;
-    sizeCm: number;           // typical adult length
+    size: { cm: number; measure: 'TL' | 'SL' };  // maximum recorded length
     diet: string;
-    temperament: string;
-    water: { type: 'salt' | 'fresh'; tempC: [number, number] };
+    water: { type: 'salt' | 'fresh'; tempC?: [number, number] };  // only where sourced
     funFacts: string[];       // 2–3
-    sources: string[];        // URLs
+    sources: { label: string; url: string }[];
   };
 }
 
@@ -265,7 +265,7 @@ Three levels, from fastest to most realistic. Almost all development happens on 
 - **Keep-awake on webOS:** the API needs confirming. Options to investigate: webOS Luna service calls available to web apps, or a hidden muted looping video as a fallback. This needs a check on a real TV (level 3).
 - **TV performance:** older webOS versions have slow Chromium builds. Mitigations: pre-rendered backgrounds, a fish cap, and an fps fallback. Decide on the minimum supported webOS version once we test on real hardware.
 - **Recognisable art:** some species (Moorish idol, Mandarin dragonet) have complex patterns. Budget extra tuning time for them, and accept a stylised look.
-- **Fact accuracy:** every fact needs a source, and the Discus is listed at genus level.
+- **Fact accuracy:** every fact needs a source (checked by a test). The discus entry is the blue discus, *S. aequifasciatus*. Where sources disagree (e.g. the zebra pleco's IUCN category), the codex says less rather than picking one.
 
 ## 12. Out of scope for v1 / future ideas
 - More biomes: deep sea, African rift lakes (Malawi/Tanganyika), Asian rivers.

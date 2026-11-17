@@ -21,6 +21,10 @@ export interface BodyShape {
   peduncle?: number;
   /** 0 = pointed snout, 1 = blunt, rounded head. */
   bluntness?: number;
+  /** Length of a protruding tube-like snout, in body lengths (0 = none). */
+  snout?: number;
+  /** Snout height as a fraction of the body's maximum height. */
+  snoutHeight?: number;
 }
 
 export type FinKind = 'dorsal' | 'anal' | 'caudal' | 'pectoral' | 'pelvic';
@@ -114,7 +118,24 @@ export type PatternLayer =
       color: string;
       seed: number;
     }
-  | { type: 'swirls'; count: number; color: string; width: number; amplitude: number; frequency: number; seed: number }
+  /** Wavy lines along the body; `outline` draws each one with a darker edge. */
+  | {
+      type: 'swirls';
+      count: number;
+      color: string;
+      width: number;
+      amplitude: number;
+      frequency: number;
+      seed: number;
+      outline?: string;
+      /** Run every line the full length of the body (default: random lengths). */
+      full?: boolean;
+      /** With `full`: where the lines start and end along the body (default 0.02..1.02). */
+      from?: number;
+      to?: number;
+    }
+  /** Rows of scale or armour-plate outlines. */
+  | { type: 'scales'; rows: number; cols: number; from: number; to: number; vRange: [number, number]; color: string; width: number }
   | { type: 'outline'; color: string; width: number };
 
 export interface Eye {
@@ -149,5 +170,9 @@ export interface FishLook {
   eye: Eye;
   /** Draw a faint gill-cover line at this u. Default 0.22; null to hide. */
   gill?: number | null;
+  /** Mouth line from the snout tip, going back: length in body lengths, and slope (dy/dx; positive slants down). */
+  mouth?: { length: number; slope: number };
+  /** Whisker-like barbels at the mouth: how many, and their length. */
+  barbels?: { count: number; length: number; color?: string };
   swim: Swim;
 }

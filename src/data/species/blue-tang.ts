@@ -1,8 +1,8 @@
-import type { Species } from '../types';
+import type { SpeciesDef } from '../types';
 
 const BLACK = '#0f1426';
 
-export const blueTang: Species = {
+export const blueTang: SpeciesDef = {
   id: 'blue-tang',
   biome: 'reef',
   rarity: 'common',
@@ -24,8 +24,11 @@ export const blueTang: Species = {
     pattern: [
       // The black "palette" marking: a band from the eye to the tail, and a
       // second one that loops round to enclose a blue patch.
-      { type: 'stripe', v: -0.4, vEnd: -0.1, thickness: 0.62, from: 0.1, to: 0.99, color: BLACK, taper: true },
-      { type: 'stripe', v: -0.55, vEnd: 0.55, thickness: 0.42, from: 0.4, to: 0.9, color: BLACK, taper: true },
+      // Upper band from the eye to the tail.
+      { type: 'stripe', v: -0.42, vEnd: -0.12, thickness: 0.5, from: 0.12, to: 0.99, color: BLACK, taper: true },
+      // The lower arm: down from mid-body, then back up to the tail, enclosing a blue patch.
+      { type: 'stripe', v: -0.3, vEnd: 0.32, thickness: 0.28, from: 0.34, to: 0.62, color: BLACK },
+      { type: 'stripe', v: 0.32, vEnd: -0.05, thickness: 0.28, from: 0.6, to: 0.97, color: BLACK },
       // The yellow tail base.
       { type: 'region', side: 'upper', boundary: 1.4, from: 0.93, to: 1.02, color: '#ffd21a' },
     ],

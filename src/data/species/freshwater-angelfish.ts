@@ -1,9 +1,9 @@
-import type { Species } from '../types';
+import type { SpeciesDef } from '../types';
 
 const BAR = '#1f1f24';
 
 // First draft; fine-tuned in Milestone 6.
-export const freshwaterAngelfish: Species = {
+export const freshwaterAngelfish: SpeciesDef = {
   id: 'freshwater-angelfish',
   biome: 'amazon',
   rarity: 'uncommon',

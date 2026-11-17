@@ -1,7 +1,7 @@
-import type { Species } from '../types';
+import type { SpeciesDef } from '../types';
 
 // First draft; fine-tuned in Milestone 6.
-export const neonTetra: Species = {
+export const neonTetra: SpeciesDef = {
   id: 'neon-tetra',
   biome: 'amazon',
   rarity: 'common',
@@ -14,6 +14,8 @@ export const neonTetra: Species = {
     palette: { body: '#c9c2ac', back: '#6c6652', belly: '#ece8dc', fin: '#ddd7c6' },
     fins: [
       { kind: 'dorsal', shape: 'pointed', from: 0.42, to: 0.55, size: 0.12, tipAt: 0.3, sweep: 0.04, opacity: 0.35 },
+      // The small adipose fin near the tail.
+      { kind: 'dorsal', shape: 'rounded', from: 0.82, to: 0.88, size: 0.04, tipAt: 0.5, opacity: 0.35, rays: false },
       { kind: 'anal', shape: 'rounded', from: 0.58, to: 0.85, size: 0.08, tipAt: 0.3, opacity: 0.35 },
       { kind: 'caudal', shape: 'forked', size: 0.24, spread: 0.16, opacity: 0.4 },
       { kind: 'pectoral', shape: 'pointed', at: [0.28, 0.2], angle: 30, size: 0.1, opacity: 0.3 },

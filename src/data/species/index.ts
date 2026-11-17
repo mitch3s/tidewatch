@@ -1,4 +1,5 @@
-import type { BiomeId, Species } from '../types';
+import { CODEX } from '../codex';
+import type { BiomeId, Species, SpeciesDef } from '../types';
 import { blueTang } from './blue-tang';
 import { bronzeCorydoras } from './bronze-corydoras';
 import { discus } from './discus';
@@ -11,6 +12,12 @@ import { royalGramma } from './royal-gramma';
 import { silverArowana } from './silver-arowana';
 import { yellowTang } from './yellow-tang';
 import { zebraPleco } from './zebra-pleco';
+
+const withCodex = (def: SpeciesDef): Species => {
+  const codex = CODEX[def.id];
+  if (!codex) throw new Error(`No codex entry for ${def.id}`);
+  return { ...def, codex };
+};
 
 /** The v1 roster (spec section 3), in codex order. */
 export const ALL_SPECIES: readonly Species[] = [
@@ -26,7 +33,7 @@ export const ALL_SPECIES: readonly Species[] = [
   discus,
   zebraPleco,
   silverArowana,
-];
+].map(withCodex);
 
 export function getSpecies(id: string): Species | undefined {
   return ALL_SPECIES.find((s) => s.id === id);

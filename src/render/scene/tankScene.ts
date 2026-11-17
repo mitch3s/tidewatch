@@ -13,6 +13,7 @@ import { StaticLayer } from './layers';
 import { LightRays } from './lightRays';
 import { SeaGrass } from './plants';
 import { createReefScenery, type Scenery } from './reef';
+import { Particles } from './particles';
 import { Sparkles } from './sparkles';
 import { TAU } from '../../util/math';
 import { createRng } from '../../util/rng';
@@ -52,6 +53,7 @@ export class TankScene {
   private readonly bubbles: Bubbles;
   private readonly grass: SeaGrass;
   private readonly sparkles = new Sparkles();
+  private readonly particles: Particles;
   private readonly hour: () => number;
   private readonly dayNight: () => boolean;
   private readonly debug: DebugView | undefined;
@@ -69,6 +71,7 @@ export class TankScene {
     this.rays = new LightRays(biome.seed + 1);
     this.bubbles = new Bubbles(this.scenery.bubbleSources, biome.floor.y + 10, biome.seed + 2);
     this.grass = new SeaGrass(biome.seed + 3, this.scenery.grass, biome.plants);
+    this.particles = new Particles(biome.seed + 6, 70, biome.id === 'reef' ? '225,245,255' : '200,180,130');
     this.rng = createRng(biome.seed + 5 + Date.now());
     this.tank = new Tank(
       {
@@ -127,6 +130,7 @@ export class TankScene {
     this.time += dt;
     this.tank.update(dt);
     this.bubbles.update(dt);
+    this.particles.update(dt);
     this.sparkles.update(dt);
     if (this.visitor) {
       this.visitor.update(dt);
@@ -148,6 +152,7 @@ export class TankScene {
     withCamera(PARALLAX.rays, () => this.rays.draw(ctx, time, this.biome.rays, light.rays));
     withCamera(PARALLAX.mid, () => {
       this.mid.draw(ctx);
+      this.particles.draw(ctx);
       this.scenery.drawLive?.(ctx, time);
     });
     withCamera(PARALLAX.fish, () => {

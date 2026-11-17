@@ -5,12 +5,12 @@ import type { Vec } from '../../util/math';
 export type ResolvedBody = Required<BodyShape>;
 
 const TEMPLATES: Record<BodyTemplate, Omit<ResolvedBody, 'template'>> = {
-  torpedo: { upper: 0.13, lower: 0.12, maxAt: 0.35, peduncle: 0.35, bluntness: 0.5 },
-  oval: { upper: 0.19, lower: 0.17, maxAt: 0.4, peduncle: 0.4, bluntness: 0.7 },
-  disc: { upper: 0.3, lower: 0.3, maxAt: 0.45, peduncle: 0.25, bluntness: 0.8 },
-  'tall-disc': { upper: 0.38, lower: 0.38, maxAt: 0.45, peduncle: 0.2, bluntness: 0.7 },
-  elongated: { upper: 0.08, lower: 0.08, maxAt: 0.3, peduncle: 0.5, bluntness: 0.4 },
-  'flat-bottom': { upper: 0.14, lower: 0.08, maxAt: 0.35, peduncle: 0.45, bluntness: 0.8 },
+  torpedo: { upper: 0.13, lower: 0.12, maxAt: 0.35, peduncle: 0.35, bluntness: 0.5, snout: 0, snoutHeight: 0.3 },
+  oval: { upper: 0.19, lower: 0.17, maxAt: 0.4, peduncle: 0.4, bluntness: 0.7, snout: 0, snoutHeight: 0.3 },
+  disc: { upper: 0.3, lower: 0.3, maxAt: 0.45, peduncle: 0.25, bluntness: 0.8, snout: 0, snoutHeight: 0.3 },
+  'tall-disc': { upper: 0.38, lower: 0.38, maxAt: 0.45, peduncle: 0.2, bluntness: 0.7, snout: 0, snoutHeight: 0.3 },
+  elongated: { upper: 0.08, lower: 0.08, maxAt: 0.3, peduncle: 0.5, bluntness: 0.4, snout: 0, snoutHeight: 0.3 },
+  'flat-bottom': { upper: 0.14, lower: 0.08, maxAt: 0.35, peduncle: 0.45, bluntness: 0.8, snout: 0, snoutHeight: 0.3 },
 };
 
 export function resolveBody(shape: BodyShape): ResolvedBody {
@@ -22,6 +22,8 @@ export function resolveBody(shape: BodyShape): ResolvedBody {
     maxAt: shape.maxAt ?? t.maxAt,
     peduncle: shape.peduncle ?? t.peduncle,
     bluntness: shape.bluntness ?? t.bluntness,
+    snout: shape.snout ?? t.snout,
+    snoutHeight: shape.snoutHeight ?? t.snoutHeight,
   };
 }
 
@@ -66,17 +68,32 @@ export interface Yaw {
  * @param flex  sideways bend at the tail, in body lengths
  */
 export function makeBody(shape: ResolvedBody, phase: number, flex: number, yaw: Yaw = { head: 0, tail: 0 }): Body {
-  const { upper, lower, maxAt, peduncle, bluntness } = shape;
+  const { upper, lower, maxAt, peduncle, bluntness, snout, snoutHeight } = shape;
   // Blunt heads rise steeply from the nose (small exponent).
   const headExp = 1.1 - 0.8 * bluntness;
 
-  const profile = (u: number): number => {
+  const baseProfile = (u: number): number => {
     if (u <= 0) return 0;
     if (u >= 1) return peduncle;
     if (u <= maxAt) return Math.pow(Math.sin((u / maxAt) * (Math.PI / 2)), headExp);
     const s = (u - maxAt) / (1 - maxAt);
     return peduncle + (1 - peduncle) * Math.pow(Math.cos(s * (Math.PI / 2)), 1.2);
   };
+
+  // With a snout, the head starts further back and a narrow tube with a
+  // rounded tip sticks out in front of it.
+  const profile =
+    snout <= 0
+      ? baseProfile
+      : (u: number): number => {
+          // The head begins partway along the snout, so the forehead slopes
+          // smoothly down into it instead of meeting it at a step.
+          const start = snout * 0.35;
+          const head = u <= start ? 0 : baseProfile((u - start) / (1 - start));
+          const tip = Math.min(1, u / 0.025);
+          const tube = u < snout * 1.6 ? snoutHeight * Math.sqrt(Math.max(0, 1 - (1 - tip) ** 2)) : 0;
+          return Math.max(head, tube);
+        };
 
   // The swim wave: zero at the head, growing toward the tail.
   const disp = (u: number) => flex * u * u * Math.sin(phase - u * WAVE_K);

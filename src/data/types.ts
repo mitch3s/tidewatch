@@ -1,12 +1,10 @@
 import type { FishLook } from '../render/fish/look';
+import type { Codex } from './codex';
 
 export type Rarity = 'common' | 'uncommon' | 'rare';
 export type BiomeId = 'reef' | 'amazon';
 
-/**
- * One species. The codex block (native range, facts, sources) is added in
- * Milestone 6, once every fact can be checked against a source.
- */
+/** One species: how it looks and swims, and what the codex says about it. */
 export interface Species {
   id: string;
   biome: BiomeId;
@@ -18,4 +16,9 @@ export interface Species {
   /** How many of this fish appear in the tank once collected. */
   groupSize: [number, number];
   look: FishLook;
+  /** Facts for the codex (see codex.ts, where every fact has a source). */
+  codex: Codex;
 }
+
+/** A species as defined in its own file; the codex is joined in species/index.ts. */
+export type SpeciesDef = Omit<Species, 'codex'>;

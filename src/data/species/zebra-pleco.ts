@@ -1,9 +1,9 @@
-import type { Species } from '../types';
+import type { SpeciesDef } from '../types';
 
 const BLACK = '#141416';
 
 // First draft; fine-tuned in Milestone 6.
-export const zebraPleco: Species = {
+export const zebraPleco: SpeciesDef = {
   id: 'zebra-pleco',
   biome: 'amazon',
   rarity: 'rare',
@@ -28,6 +28,7 @@ export const zebraPleco: Species = {
       { type: 'stripe', v: 0, thickness: 0.18, from: 0.48, to: 0.98, color: BLACK },
     ],
     eye: { u: 0.18, v: -0.65, size: 0.04, iris: '#3a3a3a' },
+    barbels: { count: 2, length: 0.05, color: 'rgba(30,30,30,0.8)' },
     gill: null,
     swim: { speed: [0.2, 0.45], tailHz: 2.2, flex: 0.02, depth: [0.92, 1], behaviour: 'bottom-dweller' },
   },

@@ -1,10 +1,10 @@
-import type { Species } from '../types';
+import type { SpeciesDef } from '../types';
 
 const ORANGE = '#ff7a1a';
 const WHITE = '#fbfaf4';
 const BLACK = '#151311';
 
-export const ocellarisClownfish: Species = {
+export const ocellarisClownfish: SpeciesDef = {
   id: 'ocellaris-clownfish',
   biome: 'reef',
   rarity: 'common',

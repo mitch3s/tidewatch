@@ -5,7 +5,7 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 - Design: [`docs/specs/2026-11-17-tidewatch-design.md`](docs/specs/2026-11-17-tidewatch-design.md)
 - Plan: [`docs/plans/2026-11-17-tidewatch-plan.md`](docs/plans/2026-11-17-tidewatch-plan.md)
 
-**Status:** Milestone 5 of 8. The game works (arrivals, rare visitors, the Amazon unlock, saving), and god mode is in place for testing. All 12 species have first-draft looks, fine-tuned in Milestone 6.
+**Status:** Milestone 6 of 8. The game works, god mode is in place, and all 12 species are tuned, with sourced codex facts. Both tanks have full scenery.
 
 ## Getting started
 
@@ -71,6 +71,7 @@ A developer panel for testing everything without waiting. It exists only in deve
 | `npm run dev` | Development server with hot reload |
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:e2e` | Browser tests (Playwright) |
+| `npm run test:visual` | Screenshot comparison of every species (add `-- --update-snapshots` after an intended change) |
 | `npm run typecheck` | TypeScript check |
 | `npm run build` | Release build into `dist/` |
 | `npm run build:dev` | Build with god mode and debug flags |
@@ -127,7 +128,8 @@ src/
   render/fish/       code-drawn fish: body, fins, patterns, renderer
   render/scene/      the tank: scenery, light rays, bubbles, plants, camera, day/night
   render/perf.ts     drops to 30 fps on slow devices
-  data/species/      one file per species
+  data/species/      one file per species (how it looks and swims)
+  data/codex.ts      codex facts per species, each with its sources
   data/biomes.ts     colours and settings per tank
   data/progression.ts which fish each tank starts with, and how it unlocks
   sim/               fish movement: steering, schooling, population

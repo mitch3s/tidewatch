@@ -97,24 +97,54 @@ export function drawPattern(ctx: CanvasRenderingContext2D, layer: PatternLayer, 
     }
     case 'swirls': {
       const rnd = createRng(layer.seed);
-      ctx.strokeStyle = layer.color;
-      ctx.lineWidth = layer.width;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
+      const paths: Path2D[] = [];
       for (let i = 0; i < layer.count; i++) {
-        const v0 = lerp(-0.85, 0.85, rnd());
+        // Full-length lines are spread evenly from top to bottom; others are random.
+        const v0 = layer.full ? lerp(-0.95, 0.95, (i + 0.5) / layer.count) + lerp(-0.04, 0.04, rnd()) : lerp(-0.85, 0.85, rnd());
         const ph = rnd() * TAU;
-        const u0 = lerp(0.05, 0.4, rnd());
-        const u1 = lerp(0.6, 1.0, rnd());
-        ctx.beginPath();
-        for (let u = u0, j = 0; u <= u1; u += 0.015, j++) {
+        const u0 = layer.full ? (layer.from ?? 0.02) : lerp(0.05, 0.4, rnd());
+        const u1 = layer.full ? (layer.to ?? 1.02) : lerp(0.6, 1.0, rnd());
+        const path = new Path2D();
+        for (let u = u0, j = 0; u <= u1; u += 0.012, j++) {
           const v = v0 + layer.amplitude * Math.sin(u * layer.frequency * TAU + ph);
           const q = body.point(u, v);
-          if (j === 0) ctx.moveTo(q.x, q.y);
-          else ctx.lineTo(q.x, q.y);
+          if (j === 0) path.moveTo(q.x, q.y);
+          else path.lineTo(q.x, q.y);
         }
-        ctx.stroke();
+        paths.push(path);
       }
+      if (layer.outline) {
+        ctx.strokeStyle = layer.outline;
+        ctx.lineWidth = layer.width * 1.9;
+        for (const p of paths) ctx.stroke(p);
+      }
+      ctx.strokeStyle = layer.color;
+      ctx.lineWidth = layer.width;
+      for (const p of paths) ctx.stroke(p);
+      return;
+    }
+    case 'scales': {
+      // Each scale is a small arc opening toward the tail; alternate rows are offset.
+      ctx.strokeStyle = layer.color;
+      ctx.lineWidth = layer.width;
+      const du = (layer.to - layer.from) / layer.cols;
+      const dv = (layer.vRange[1] - layer.vRange[0]) / layer.rows;
+      ctx.beginPath();
+      for (let r = 0; r <= layer.rows; r++) {
+        const v = layer.vRange[0] + r * dv;
+        const offset = r % 2 ? du / 2 : 0;
+        for (let c = 0; c < layer.cols; c++) {
+          const u = layer.from + c * du + offset;
+          const a = body.point(u, v - dv * 0.55);
+          const m = body.point(u + du * 0.55, v);
+          const b = body.point(u, v + dv * 0.55);
+          ctx.moveTo(a.x, a.y);
+          ctx.quadraticCurveTo(m.x, m.y, b.x, b.y);
+        }
+      }
+      ctx.stroke();
       return;
     }
     case 'outline':

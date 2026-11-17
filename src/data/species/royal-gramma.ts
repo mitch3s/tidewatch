@@ -1,7 +1,7 @@
-import type { Species } from '../types';
+import type { SpeciesDef } from '../types';
 
 // First draft; fine-tuned in Milestone 6.
-export const royalGramma: Species = {
+export const royalGramma: SpeciesDef = {
   id: 'royal-gramma',
   biome: 'reef',
   rarity: 'uncommon',

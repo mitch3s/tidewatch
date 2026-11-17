@@ -113,3 +113,23 @@ describe('turning (yaw)', () => {
     }
   });
 });
+
+describe('snout', () => {
+  const withSnout = resolveBody({ template: 'disc', upper: 0.3, lower: 0.3, maxAt: 0.45, peduncle: 0.2, bluntness: 0.4, snout: 0.1, snoutHeight: 0.2 });
+
+  it('still has zero height at the very tip', () => {
+    expect(makeBody(withSnout, 0, 0).halfHeight(0, -1)).toBeCloseTo(0, 6);
+  });
+
+  it('keeps the snout narrow, then widens into the head', () => {
+    const b = makeBody(withSnout, 0, 0);
+    const snoutH = b.halfHeight(0.06, -1);
+    expect(snoutH).toBeGreaterThan(0.3 * 0.2 * 0.6);
+    expect(snoutH).toBeLessThanOrEqual(0.3 * 0.2 + 1e-9);
+    expect(b.halfHeight(0.3, -1)).toBeGreaterThan(snoutH * 2);
+  });
+
+  it('defaults to no snout', () => {
+    expect(resolveBody({ template: 'disc' }).snout).toBe(0);
+  });
+});
