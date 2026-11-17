@@ -5,7 +5,7 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 - Design: [`docs/specs/2026-11-17-tidewatch-design.md`](docs/specs/2026-11-17-tidewatch-design.md)
 - Plan: [`docs/plans/2026-11-17-tidewatch-plan.md`](docs/plans/2026-11-17-tidewatch-plan.md)
 
-**Status:** Milestone 4 of 8. The game works: fish arrive over time, rare visitors can be caught, the Amazon tank unlocks, and progress is saved. All 12 species have first-draft looks (fine-tuned in Milestone 6).
+**Status:** Milestone 5 of 8. The game works (arrivals, rare visitors, the Amazon unlock, saving), and god mode is in place for testing. All 12 species have first-draft looks, fine-tuned in Milestone 6.
 
 ## Getting started
 
@@ -37,7 +37,7 @@ Open the URL Vite prints (usually http://localhost:5173) in Chrome. The app is d
 
 ### Useful URLs
 
-These debug flags work in development builds only (`npm run dev`, or a build made with `VITE_GOD_MODE=1`):
+These debug flags work in development builds only (`npm run dev` or `npm run build:dev`):
 
 | URL | What it does |
 |---|---|
@@ -48,11 +48,21 @@ These debug flags work in development builds only (`npm run dev`, or a build mad
 | `/?collectAll` | Collect every species |
 | `/?reset` | Start from a fresh save |
 | `/?debug` | Show the timers and frame rate |
+| `/?god` | Open god mode at startup |
 
 Flags can be combined, e.g. `/?reset&visitor=now&debug`. These work in every build:
 
 - `/?hour=21.5`: preview the lighting at a time of day (otherwise it follows the clock).
 - `/?fish=ocellaris-clownfish`: one species large and centred, swimming in place. Add `&still` to freeze it and `&turn=0.5` to see a turn stage.
+
+### God mode
+
+A developer panel for testing everything without waiting. It exists only in development builds; release builds don't contain it (packaging checks this).
+
+- **Open it:** press `G` on a PC, or Red, Green, Yellow, Blue on the remote within 2 seconds (keys 1, 2, 3, 4 on a PC). `?god` opens it at startup.
+- **Use it:** ↑↓ move, ←→ adjust, OK press, Back close. The mouse works too. Buttons in red ask you to press twice.
+- **What's in it:** summon any visitor, trigger arrivals, show any message; speed up, pause or set the time of day; lock and unlock tanks; set any species to unseen, sighted or collected; debug overlays (movement, bounds, school links, frame rate); a stress test with up to 200 extra fish; saved progress (presets, reset, export, import).
+- **Fish lab:** one species shown large with a real-size copy below. Every number and colour of its look can be adjusted live (the fish in the tank change too), then copied as JSON into `src/data/species/<id>.ts`.
 
 ## Scripts
 
@@ -62,8 +72,10 @@ Flags can be combined, e.g. `/?reset&visitor=now&debug`. These work in every bui
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:e2e` | Browser tests (Playwright) |
 | `npm run typecheck` | TypeScript check |
-| `npm run build` | Production build into `dist/` |
-| `npm run package:webos` | Build, then create an `.ipk` in `out/` |
+| `npm run build` | Release build into `dist/` |
+| `npm run build:dev` | Build with god mode and debug flags |
+| `npm run package:webos` | Release build, then create an `.ipk` in `out/` |
+| `npm run package:webos:dev` | The same with god mode, for testing on the TV |
 
 ## Running on an LG TV
 
@@ -108,7 +120,7 @@ src/
   game/              the rules: arrivals, rare visitors, unlocks, game clock
   save/              saved progress: format, checks, storage
   ui/                on-screen messages and hints (HTML over the canvas)
-  dev/               debug URL flags (development builds only)
+  dev/               god mode, fish lab and debug URL flags (development builds only)
   input/             keyboard, remote and pointer → actions; idle tracking
   platform/          browser vs webOS differences
   render/stage.ts    1920×1080 canvas and game loop

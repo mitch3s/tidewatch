@@ -3,7 +3,7 @@ import { parseDevFlags } from '../../src/dev/urlFlags';
 
 describe('parseDevFlags', () => {
   it('reads every flag', () => {
-    expect(parseDevFlags('?timescale=600&visitor=now&arrival=now&unlockAll&collectAll&reset&debug')).toEqual({
+    expect(parseDevFlags('?timescale=600&visitor=now&arrival=now&unlockAll&collectAll&reset&debug&god')).toEqual({
       timescale: 600,
       visitorNow: true,
       arrivalNow: true,
@@ -11,6 +11,7 @@ describe('parseDevFlags', () => {
       collectAll: true,
       reset: true,
       debug: true,
+      god: true,
     });
   });
 
@@ -23,6 +24,7 @@ describe('parseDevFlags', () => {
       collectAll: false,
       reset: false,
       debug: false,
+      god: false,
     });
   });
 

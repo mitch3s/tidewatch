@@ -192,3 +192,39 @@ describe('Game.unlockBiome', () => {
     expect(events.filter((e) => e.type === 'biomeUnlocked')).toHaveLength(1);
   });
 });
+
+describe('god-mode actions', () => {
+  const setup = () => {
+    const state = fresh();
+    const game = new Game(state, ALL_SPECIES, createRng(2), () => new Date('2026-04-04T00:00:00Z'));
+    const events: GameEvent[] = [];
+    game.on((e) => events.push(e));
+    return { state, game, events };
+  };
+
+  it('setSpeciesState can mark a species unseen, sighted or collected', () => {
+    const { state, game } = setup();
+    game.setSpeciesState('ocellaris-clownfish', 'unseen');
+    expect(state.species['ocellaris-clownfish']).toEqual({ state: 'unseen' });
+    game.setSpeciesState('mandarin-dragonet', 'sighted');
+    expect(state.species['mandarin-dragonet']).toEqual({ state: 'sighted' });
+    game.setSpeciesState('blue-tang', 'collected');
+    expect(state.species['blue-tang']).toEqual({ state: 'collected', collectedAt: '2026-04-04T00:00:00.000Z' });
+  });
+
+  it('setSpeciesState to collected still runs unlocks', () => {
+    const { state, game } = setup();
+    game.setSpeciesState('blue-tang', 'collected');
+    game.setSpeciesState('royal-gramma', 'collected');
+    expect(state.unlockedBiomes).toContain('amazon');
+  });
+
+  it('lockBiome locks a tank but never the last one', () => {
+    const { state, game } = setup();
+    game.unlockBiome('amazon');
+    game.lockBiome('amazon');
+    expect(state.unlockedBiomes).toEqual(['reef']);
+    game.lockBiome('reef');
+    expect(state.unlockedBiomes).toEqual(['reef']);
+  });
+});

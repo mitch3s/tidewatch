@@ -1,6 +1,6 @@
 import { BIOME_ORDER, BIOME_RULES } from '../data/progression';
 import type { BiomeId, Species } from '../data/types';
-import { ARRIVAL_DELAY_MS, randomDelay, type SaveState, VISITOR_DELAY_MS } from '../save/schema';
+import { ARRIVAL_DELAY_MS, type CollectionState, randomDelay, type SaveState, VISITOR_DELAY_MS } from '../save/schema';
 import { pickArrival } from './arrivals';
 import { checkUnlocks } from './unlocks';
 import { pickVisitor, visitorCandidates } from './visitors';
@@ -114,6 +114,32 @@ export class Game {
     this.markCollected(id);
     this.emit({ type: 'collected', speciesId: id, biome: this.biomeOf(id) });
     this.runUnlocks();
+    this.changed();
+  }
+
+  /** Set a species to any collection state (god mode). */
+  setSpeciesState(id: string, state: CollectionState): void {
+    if (state === 'collected') {
+      this.markCollected(id);
+      this.emit({ type: 'collected', speciesId: id, biome: this.biomeOf(id) });
+      this.runUnlocks();
+    } else {
+      this.state.species[id] = { state };
+    }
+    this.changed();
+  }
+
+  /** Lock a tank again (god mode). The last unlocked tank stays unlocked. */
+  lockBiome(biome: BiomeId): void {
+    if (this.state.unlockedBiomes.length <= 1) return;
+    this.state.unlockedBiomes = this.state.unlockedBiomes.filter((b) => b !== biome);
+    this.changed();
+  }
+
+  /** Replace all progress, e.g. with an imported save or a preset (god mode). */
+  replaceState(next: SaveState): void {
+    this.activeVisitor = null;
+    Object.assign(this.state, next);
     this.changed();
   }
 

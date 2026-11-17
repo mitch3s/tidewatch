@@ -12,7 +12,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test --trace off",
-    "package:webos": "npm run build && node scripts/package-webos.mjs"
+    "package:webos": "npm run build && node scripts/package-webos.mjs",
+    "package:webos:dev": "npm run build:dev && node scripts/package-webos.mjs --dev",
+    "build:dev": "tsc --noEmit && vite build --mode godmode"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

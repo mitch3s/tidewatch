@@ -14,6 +14,8 @@ export interface DevFlags {
   reset: boolean;
   /** `?debug`: show timers and frame rate. */
   debug: boolean;
+  /** `?god`: open god mode at startup. */
+  god: boolean;
 }
 
 export function parseDevFlags(search: string): DevFlags {
@@ -27,5 +29,6 @@ export function parseDevFlags(search: string): DevFlags {
     collectAll: p.has('collectAll'),
     reset: p.has('reset'),
     debug: p.has('debug'),
+    god: p.has('god'),
   };
 }

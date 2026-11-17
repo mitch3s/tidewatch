@@ -9,7 +9,7 @@ export default defineConfig({
   },
   webServer: {
     // Dev tools (URL flags) are needed by the tests, so build with them on.
-    command: 'VITE_GOD_MODE=1 npx vite build && npx vite preview --port 4173 --strictPort',
+    command: 'npx vite build --mode godmode && npx vite preview --port 4173 --strictPort',
     url: 'http://localhost:4173',
     reuseExistingServer: true,
     timeout: 120_000,

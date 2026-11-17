@@ -20,11 +20,20 @@ import { createRng } from '../../util/rng';
 /** Parallax per layer: 0 = fixed to the screen, 1 = moves with the fish. */
 const PARALLAX = { far: 0.35, rays: 0.5, mid: 0.8, fish: 1, bubbles: 1.05, front: 1.25 } as const;
 
+/** God-mode debug drawing, shared by all scenes. */
+export interface DebugView {
+  vectors: boolean;
+  bounds: boolean;
+  neighbours: boolean;
+}
+
 export interface TankSceneOptions {
   /** Time of day in hours. Defaults to the device clock. */
   hour?: () => number;
   /** Turn day/night lighting off (always daylight). */
   dayNight?: () => boolean;
+  /** God-mode debug drawing. */
+  debug?: DebugView;
 }
 
 function sceneryFor(biome: BiomeDef): Scenery {
@@ -45,6 +54,7 @@ export class TankScene {
   private readonly sparkles = new Sparkles();
   private readonly hour: () => number;
   private readonly dayNight: () => boolean;
+  private readonly debug: DebugView | undefined;
   private readonly rng: () => number;
   private time = 0;
 
@@ -75,6 +85,7 @@ export class TankScene {
         return d.getHours() + d.getMinutes() / 60;
       });
     this.dayNight = opts.dayNight ?? (() => true);
+    this.debug = opts.debug;
   }
 
   /** Paint the static layers for the current backing-store scale. */
@@ -143,6 +154,7 @@ export class TankScene {
       for (const agent of this.tank.agents) renderFish(ctx, agent.species.look, agent.poseAt(alpha));
       if (this.visitor) this.drawVisitor(ctx, alpha, time);
       this.sparkles.draw(ctx);
+      if (this.debug) this.drawDebug(ctx, alpha);
     });
     withCamera(PARALLAX.bubbles, () => this.bubbles.draw(ctx));
     withCamera(PARALLAX.front, () => this.grass.draw(ctx, time));
@@ -161,6 +173,58 @@ export class TankScene {
     v.addColorStop(1, 'rgba(0,8,20,0.45)');
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+  }
+
+  private drawDebug(ctx: CanvasRenderingContext2D, alpha: number): void {
+    const d = this.debug!;
+    if (!d.vectors && !d.bounds && !d.neighbours) return;
+    ctx.save();
+    ctx.lineWidth = 2;
+    const agents = this.tank.agents;
+    if (d.bounds) {
+      const b = this.tank.env.bounds;
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.setLineDash([10, 8]);
+      ctx.strokeRect(b.left, b.top, b.right - b.left, b.bottom - b.top);
+      ctx.setLineDash([]);
+    }
+    for (const a of agents) {
+      const p = a.poseAt(alpha);
+      if (d.bounds) {
+        ctx.strokeStyle = 'rgba(255,230,120,0.7)';
+        ctx.strokeRect(p.x - a.length * 0.6, p.y - a.length * 0.35, a.length * 1.2, a.length * 0.7);
+      }
+      if (d.vectors) {
+        ctx.strokeStyle = 'rgba(120,255,160,0.9)';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + a.vel.x * 0.8, p.y + a.vel.y * 0.8);
+        ctx.stroke();
+        const t = a.debugTarget;
+        ctx.strokeStyle = 'rgba(255,120,200,0.45)';
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(t.x, t.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,120,200,0.8)';
+        ctx.fillRect(t.x - 4, t.y - 4, 8, 8);
+      }
+      if (d.neighbours && a.school) {
+        ctx.strokeStyle = 'rgba(120,200,255,0.35)';
+        for (const o of agents) {
+          if (o === a || o.school !== a.school) continue;
+          if (Math.hypot(o.pos.x - a.pos.x, o.pos.y - a.pos.y) < 260) {
+            ctx.beginPath();
+            ctx.moveTo(a.pos.x, a.pos.y);
+            ctx.lineTo(o.pos.x, o.pos.y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+    ctx.restore();
   }
 
   /** The visitor, with a soft pulsing glow so it stands out even at night. */

@@ -85,6 +85,11 @@ export class FishAgent {
     this.prev = this.cur;
   }
 
+  /** Where it's heading (for the god-mode debug overlay). */
+  get debugTarget(): Vec {
+    return this.target;
+  }
+
   get behaviour() {
     return this.species.look.swim.behaviour;
   }

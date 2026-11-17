@@ -13,6 +13,17 @@ if (!existsSync(join(dist, 'index.html'))) {
   process.exit(1);
 }
 
+// A release package must not contain god mode (spec 5.6). Dev packages for
+// testing on the TV (`npm run package:webos:dev`) pass --dev and skip this.
+const devPackage = process.argv.includes('--dev');
+if (!devPackage) {
+  const js = readFileSync(join(dist, 'assets', 'app.js'), 'utf8');
+  if (js.includes('tw-god') || js.includes('Open the fish lab')) {
+    console.error('Release build contains god-mode code. Aborting.');
+    process.exit(1);
+  }
+}
+
 cpSync(join(root, 'webos'), dist, { recursive: true });
 
 // Keep the app version in sync with package.json.

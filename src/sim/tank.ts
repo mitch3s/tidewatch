@@ -70,6 +70,15 @@ export class Tank {
     return added;
   }
 
+  /** Add fish beyond the cap, for stress testing (god mode). */
+  addExtras(species: readonly Species[], n: number): void {
+    for (let i = 0; i < n; i++) {
+      const s = species[Math.floor(this.rng() * species.length)]!;
+      this.agents.push(new FishAgent(s, this.env, this.rng));
+    }
+    this.sortByDepth();
+  }
+
   update(dt: number): void {
     for (const a of this.agents) a.update(dt, this.env, this.agents);
   }
