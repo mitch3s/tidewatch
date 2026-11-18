@@ -43,6 +43,9 @@ export interface RenderOptions {
   silhouette?: string;
 }
 
+/** Colour for fine dark details (fin rays): deep water blue instead of black. */
+const SHADOW_INK = '#06182a';
+
 const resolved = new WeakMap<FishLook, ResolvedBody>();
 function bodyShapeOf(look: FishLook): ResolvedBody {
   let r = resolved.get(look);
@@ -109,8 +112,8 @@ export function renderFish(
     ctx.save();
     ctx.clip(g.path);
     if (detailed && fin.rays !== false) {
-      ctx.globalAlpha = 0.16;
-      ctx.strokeStyle = '#000';
+      ctx.globalAlpha = 0.2;
+      ctx.strokeStyle = SHADOW_INK;
       ctx.lineWidth = px;
       ctx.beginPath();
       for (const [a, b] of g.rays) {
@@ -152,19 +155,33 @@ export function renderFish(
     ctx.clip(bodyPath);
     for (const layer of look.pattern) drawPattern(ctx, layer, body, px);
 
-    // Soft lighting from above: a highlight on the back, shadow under the belly.
+    // Lighting from the surface: a soft sheen just below the back, and a
+    // shadow under the belly tinted by the water rather than black.
     const shade = ctx.createLinearGradient(0, -shape.upper, 0, shape.lower);
-    shade.addColorStop(0, 'rgba(255,255,255,0.20)');
-    shade.addColorStop(0.35, 'rgba(255,255,255,0)');
-    shade.addColorStop(0.65, 'rgba(0,0,0,0)');
-    shade.addColorStop(1, 'rgba(0,0,0,0.30)');
+    shade.addColorStop(0, 'rgba(255,255,255,0.10)');
+    shade.addColorStop(0.16, 'rgba(255,255,255,0.30)');
+    shade.addColorStop(0.36, 'rgba(255,255,255,0.04)');
+    shade.addColorStop(0.55, 'rgba(255,255,255,0)');
+    shade.addColorStop(0.62, 'rgba(4,22,44,0)');
+    shade.addColorStop(1, 'rgba(4,22,44,0.42)');
     ctx.fillStyle = shade;
     ctx.fill(bodyPath);
+
+    // Rim light along the top edge (stroked inside the body clip, so only
+    // the inner half of the line shows).
+    if (detailed && fold < 0.95) {
+      const rim = ctx.createLinearGradient(0, -shape.upper, 0, 0);
+      rim.addColorStop(0, `rgba(235,250,255,${(0.55 * (1 - fold)).toFixed(3)})`);
+      rim.addColorStop(1, 'rgba(235,250,255,0)');
+      ctx.strokeStyle = rim;
+      ctx.lineWidth = 5 * px;
+      ctx.stroke(rimPath);
+    }
 
     // Gill cover line.
     const gill = look.gill === undefined ? 0.22 : look.gill;
     if (detailed && gill !== null) {
-      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.strokeStyle = 'rgba(4,22,44,0.22)';
       ctx.lineWidth = 1.5 * px;
       ctx.beginPath();
       for (let i = 0; i <= 12; i++) {
@@ -185,9 +202,10 @@ export function renderFish(
       }
     }
     // A faint darker rim keeps the fish readable against any background.
-    // (Faded out mid-turn, when the outline crosses over the body.)
+    // Deep water blue rather than black, so it doesn't read as a cartoon
+    // outline. (Faded out mid-turn, when the outline crosses over the body.)
     if (fold < 0.95) {
-      ctx.strokeStyle = `rgba(0,0,0,${(0.25 * (1 - fold)).toFixed(3)})`;
+      ctx.strokeStyle = `rgba(4,22,44,${(0.2 * (1 - fold)).toFixed(3)})`;
       ctx.lineWidth = 1.2 * px;
       ctx.stroke(rimPath);
     }

@@ -15,6 +15,8 @@ export interface BiomeDef {
   floor: { y: number; top: string; bottom: string };
   /** Light ray colour as "r,g,b" (drawn additively). */
   rays: string;
+  /** Caustic light on the sand: colour as "r,g,b" and strength at full daylight. */
+  caustics: { rgb: string; strength: number };
   /** Seed for the generated scenery, so the tank looks the same every time. */
   seed: number;
 }
@@ -29,6 +31,7 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
     plants: ['#2f7a4a', '#3f8f5a', '#4f9f63', '#2a6b45', '#5aa66b'],
     floor: { y: 905, top: '#e8d8ae', bottom: '#b49f74' },
     rays: '200,245,255',
+    caustics: { rgb: '215,248,255', strength: 0.3 },
     seed: 7,
   },
   amazon: {
@@ -41,6 +44,8 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
     plants: ['#4f7a2a', '#5f8f34', '#3f6a22', '#6f9f3c'],
     floor: { y: 915, top: '#9b7b4f', bottom: '#5e4628' },
     rays: '255,240,190',
+    // Tea-coloured, murky water: faint and warm.
+    caustics: { rgb: '255,228,170', strength: 0.16 },
     seed: 11,
   },
 };

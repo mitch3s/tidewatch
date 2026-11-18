@@ -4,6 +4,7 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 
 - Design: [`docs/specs/2026-11-17-tidewatch-design.md`](docs/specs/2026-11-17-tidewatch-design.md)
 - Plan: [`docs/plans/2026-11-17-tidewatch-plan.md`](docs/plans/2026-11-17-tidewatch-plan.md)
+- v1.1 look pass: [`docs/specs/2026-11-18-tidewatch-v1.1-look.md`](docs/specs/2026-11-18-tidewatch-v1.1-look.md)
 
 **Status:** Milestone 7 of 8. The whole app works with a remote: the aquarium, collecting, the codex and settings. Next is testing on a real TV (Milestone 8).
 

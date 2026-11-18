@@ -4,12 +4,14 @@ import { CATCH_WINDOW_MS } from '../../game/game';
 import { Tank } from '../../sim/tank';
 import { VisitorSwimmer } from '../../sim/visitor';
 import { renderFish } from '../fish/renderFish';
-import { FishSprites } from '../fish/sprites';
+import { depthLevel, FishSprites, VECTOR_FADE } from '../fish/sprites';
+import { FloorShadows, NearMotes, SurfaceShimmer } from './atmosphere';
+import { Caustics } from './caustics';
 import { STAGE_HEIGHT, STAGE_WIDTH } from '../stage';
 import { createAmazonScenery } from './amazon';
 import { Bubbles } from './bubbles';
 import { Camera } from './camera';
-import { lightingAt } from './daynight';
+import { lightingAt, mixRgb } from './daynight';
 import { StaticLayer } from './layers';
 import { LightRays } from './lightRays';
 import { SeaGrass } from './plants';
@@ -21,6 +23,10 @@ import { createRng } from '../../util/rng';
 
 /** Parallax per layer: 0 = fixed to the screen, 1 = moves with the fish. */
 const PARALLAX = { far: 0.35, rays: 0.5, mid: 0.8, fish: 1, bubbles: 1.05, front: 1.25 } as const;
+
+/** Colour and strength of the light rays at night. */
+const MOON_RGB = '170,195,255';
+const MOONLIGHT = 0.4;
 
 /** God-mode debug drawing, shared by all scenes. */
 export interface DebugView {
@@ -57,8 +63,12 @@ export class TankScene {
   private readonly grass: SeaGrass;
   private readonly sparkles = new Sparkles();
   private readonly particles: Particles;
+  private readonly caustics: Caustics;
+  private readonly shadows: FloorShadows;
+  private readonly motes: NearMotes;
+  private readonly shimmer: SurfaceShimmer;
   private pixelScale = 1;
-  private readonly sprites = new FishSprites(() => this.pixelScale);
+  private readonly sprites: FishSprites;
   private readonly hour: () => number;
   private readonly dayNight: () => boolean;
   private readonly debug: DebugView | undefined;
@@ -76,7 +86,13 @@ export class TankScene {
     this.rays = new LightRays(biome.seed + 1);
     this.bubbles = new Bubbles(this.scenery.bubbleSources, biome.floor.y + 10, biome.seed + 2);
     this.grass = new SeaGrass(biome.seed + 3, this.scenery.grass, biome.plants);
-    this.particles = new Particles(biome.seed + 6, 70, biome.id === 'reef' ? '225,245,255' : '200,180,130');
+    const moteRgb = biome.id === 'reef' ? '225,245,255' : '200,180,130';
+    this.particles = new Particles(biome.seed + 6, 70, moteRgb);
+    this.caustics = new Caustics(biome.floor.y, biome.caustics);
+    this.shadows = new FloorShadows(biome.floor.y);
+    this.motes = new NearMotes(biome.seed + 7, moteRgb);
+    this.shimmer = new SurfaceShimmer(biome.seed + 8);
+    this.sprites = new FishSprites(() => this.pixelScale, biome.haze);
     this.rng = createRng(biome.seed + 5 + Date.now());
     this.tank = new Tank(
       {
@@ -138,6 +154,7 @@ export class TankScene {
     this.tank.update(dt);
     this.bubbles.update(dt);
     this.particles.update(dt);
+    this.motes.update(dt);
     this.sparkles.update(dt);
     if (this.visitor) {
       this.visitor.update(dt);
@@ -155,38 +172,69 @@ export class TankScene {
       ctx.restore();
     };
 
+    // Sunlight by day, faint silver moonlight by night.
+    const rayRgb = mixRgb(this.biome.rays, MOON_RGB, light.moon);
+    const rayStrength = light.rays + MOONLIGHT * light.moon;
+
     withCamera(PARALLAX.far, () => this.far.draw(ctx));
-    withCamera(PARALLAX.rays, () => this.rays.draw(ctx, time, this.biome.rays, light.rays));
+    withCamera(PARALLAX.rays, () => this.rays.draw(ctx, time, rayRgb, rayStrength));
     withCamera(PARALLAX.mid, () => {
       this.mid.draw(ctx);
+      this.caustics.draw(ctx, time, light.rays);
       this.particles.draw(ctx);
       this.scenery.drawLive?.(ctx, time);
     });
     withCamera(PARALLAX.fish, () => {
+      const agents = this.tank.agents;
+      const poses = agents.map((a) => a.poseAt(alpha));
+      this.shadows.draw(ctx, poses, 0.35 + 0.65 * light.rays);
       const vectors = this.debug?.noSprites === true;
-      for (const agent of this.tank.agents) {
-        const pose = agent.poseAt(alpha);
-        if (vectors || !this.sprites.draw(ctx, agent.species, pose)) renderFish(ctx, agent.species.look, pose);
+      for (let i = 0; i < agents.length; i++) {
+        const agent = agents[i]!;
+        const pose = poses[i]!;
+        const level = depthLevel(agent.z);
+        if (vectors || !this.sprites.draw(ctx, agent.species, pose, level)) {
+          ctx.globalAlpha = VECTOR_FADE[level];
+          renderFish(ctx, agent.species.look, pose);
+          ctx.globalAlpha = 1;
+        }
       }
       if (this.visitor) this.drawVisitor(ctx, alpha, time);
       this.sparkles.draw(ctx);
       if (this.debug) this.drawDebug(ctx, alpha);
     });
     withCamera(PARALLAX.bubbles, () => this.bubbles.draw(ctx));
-    withCamera(PARALLAX.front, () => this.grass.draw(ctx, time));
+    withCamera(PARALLAX.front, () => {
+      this.grass.draw(ctx, time);
+      this.motes.draw(ctx, 0.45 + 0.55 * light.rays);
+    });
+    this.shimmer.draw(ctx, time, rayRgb, rayStrength);
 
-    // Screen-space effects: dawn/dusk warmth, night, and a soft vignette.
-    if (light.warmth > 0.01) {
-      ctx.fillStyle = `rgba(255,140,70,${(light.warmth * 0.12).toFixed(3)})`;
+    // Screen-space grading: a multiply colour grade keeps contrast (night is
+    // darker and bluer, dawn and dusk warmer) where a translucent overlay
+    // would wash everything out.
+    const [gr, gg, gb] = light.grade;
+    if (gr < 254 || gg < 254 || gb < 254) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = `rgb(${gr},${gg},${gb})`;
       ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+      ctx.restore();
     }
-    if (light.darkness > 0.01) {
-      ctx.fillStyle = `rgba(2,10,38,${light.darkness.toFixed(3)})`;
-      ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+    // At dawn and dusk the surface glows warm.
+    if (light.warmth > 0.01) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const w = ctx.createLinearGradient(0, 0, 0, STAGE_HEIGHT * 0.55);
+      w.addColorStop(0, `rgba(255,150,80,${(light.warmth * 0.22).toFixed(3)})`);
+      w.addColorStop(1, 'rgba(255,150,80,0)');
+      ctx.fillStyle = w;
+      ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT * 0.55);
+      ctx.restore();
     }
     const v = ctx.createRadialGradient(STAGE_WIDTH / 2, STAGE_HEIGHT * 0.45, STAGE_HEIGHT * 0.45, STAGE_WIDTH / 2, STAGE_HEIGHT * 0.45, STAGE_WIDTH * 0.62);
     v.addColorStop(0, 'rgba(0,0,0,0)');
-    v.addColorStop(1, 'rgba(0,8,20,0.45)');
+    v.addColorStop(1, 'rgba(0,8,20,0.5)');
     ctx.fillStyle = v;
     ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
   }
