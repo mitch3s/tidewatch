@@ -1,7 +1,7 @@
 # Tidewatch v1.1: the look pass
 
 **Date:** 2026-11-18
-**Status:** Approved (direction "premium illustrated", option A from the v1 review). After the first review the effects were too subtle, so the sand light, haze and blur were strengthened.
+**Status:** Approved (direction "premium illustrated", option A from the v1 review). After the first review the effects were too subtle, so the sand light, haze and blur were strengthened. After the second review (1.1.1) the sand light was toned down and the blur removed: blurred fish looked bad.
 **Builds on:** [`2026-11-17-tidewatch-design.md`](2026-11-17-tidewatch-design.md)
 
 ## 1. Why
@@ -20,8 +20,8 @@ This comes before any new species or biomes, so new content is tuned once, in th
 
 ### 2.2 Depth
 - Tank fish get a wider depth range (z 0.7–1.1 instead of 0.85–1.1).
-- Fish are drawn in three depth levels. Far fish are tinted towards the biome's haze colour and slightly blurred; the middle level is lightly tinted; near fish are untouched.
-- The tint and blur are baked into the cached sprites when they are first drawn (a few extra sprite sets per species), so they cost nothing per frame. `ctx.filter` is never used per frame.
+- Fish are drawn in three depth levels. Far fish are tinted towards the biome's haze colour (not blurred: tried in 1.1.0 and it looked bad); the middle level is lightly tinted; near fish are untouched.
+- The tint is baked into the cached sprites when they are first drawn (a few extra sprite sets per species), so they cost nothing per frame. `ctx.filter` is never used per frame.
 - Fish near the floor cast a soft shadow on the sand.
 
 ### 2.3 Water
@@ -39,7 +39,7 @@ This comes before any new species or biomes, so new content is tuned once, in th
 
 ## 3. Performance budget
 
-The C6 used about 3 ms of its 16.7 ms frame. v1.1 adds per frame: two pattern fills (caustics), a few gradient strokes (shimmer), up to 40 shadow sprite copies, 14 mote sprite copies and one full-screen multiply fill. All tinted and blurred fish come from the sprite cache. Target: stays well inside the 60 fps budget on the C6; check with the god-mode performance readout.
+The C6 used about 3 ms of its 16.7 ms frame. v1.1 adds per frame: two pattern fills (caustics), a few gradient strokes (shimmer), up to 40 shadow sprite copies, 14 mote sprite copies and one full-screen multiply fill. All tinted fish come from the sprite cache. Target: stays well inside the 60 fps budget on the C6; check with the god-mode performance readout.
 
 - *PC measurement (headless Chromium, 1920×1080, all species):* draw time went from 0.8 to 1.2 ms per frame by day and from 0.7 to 1.3 ms at night. On the C6 (2.9 ms in v1) that should still leave most of the 16.7 ms budget. **To check on the TV.**
 - The caustic pattern is computed once at startup (about 0.1 s on a PC, so expect up to about a second on the TV, while the frame-rate guard still ignores slow frames) and only recoloured per biome.

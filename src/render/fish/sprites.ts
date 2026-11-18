@@ -10,12 +10,11 @@ const SIZE_FACTOR = 1.12;
 
 /**
  * Depth levels: 0 = near (as drawn), 1 = middle distance, 2 = far. Distant
- * fish are tinted towards the water's haze colour and slightly softened,
- * baked into the cached frames so it costs nothing per frame.
+ * fish are tinted towards the water's haze colour (no blur: blurred fish
+ * looked bad), baked into the cached frames so it costs nothing per frame.
  */
 export type DepthLevel = 0 | 1 | 2;
-const HAZE_ALPHA: Record<DepthLevel, number> = { 0: 0, 1: 0.28, 2: 0.52 };
-const BLUR_PX: Record<DepthLevel, number> = { 0: 0, 1: 0.7, 2: 1.8 };
+const HAZE_ALPHA: Record<DepthLevel, number> = { 0: 0, 1: 0.2, 2: 0.4 };
 
 /** The depth level for a fish's depth value z (0.7 far .. 1.1 near). */
 export function depthLevel(z: number): DepthLevel {
@@ -23,7 +22,7 @@ export function depthLevel(z: number): DepthLevel {
 }
 
 /** How see-through to draw an uncached (turning) fish to roughly match its level. */
-export const VECTOR_FADE: Record<DepthLevel, number> = { 0: 1, 1: 0.82, 2: 0.6 };
+export const VECTOR_FADE: Record<DepthLevel, number> = { 0: 1, 1: 0.88, 2: 0.72 };
 
 interface SpriteSet {
   look: FishLook;
@@ -102,11 +101,7 @@ export class FishSprites {
     const ctx = c.getContext('2d');
     if (!ctx) return null;
     ctx.setTransform(set.pixelScale, 0, 0, set.pixelScale, 0, 0);
-    const blur = BLUR_PX[set.level];
-    // Drawn once per frame image, never per display frame.
-    if (blur > 0) ctx.filter = `blur(${(blur * set.pixelScale).toFixed(2)}px)`;
     renderFish(ctx, look, framePose(look, set.cx / set.pixelScale, set.cy / set.pixelScale, set.refLength, i));
-    ctx.filter = 'none';
     const haze = HAZE_ALPHA[set.level];
     if (haze > 0) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
