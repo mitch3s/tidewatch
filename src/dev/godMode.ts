@@ -43,6 +43,7 @@ export interface GodHost {
   rebuildScenes(): void;
   scene(): TankScene;
   setDebugHud(on: boolean): void;
+  keepAwakeStatus(): string;
   save(): void;
 }
 
@@ -276,6 +277,7 @@ export class GodMode {
       get: () => (h.stage.perf.averageMs ? `${Math.round(1000 / h.stage.perf.averageMs)} fps (${h.stage.perf.averageMs.toFixed(1)} ms)` : '-'),
     });
     rows.push({ kind: 'info', label: 'Draw time per frame', get: () => `${h.stage.perf.workMs.toFixed(1)} ms` });
+    rows.push({ kind: 'info', label: 'Keep awake', get: () => h.keepAwakeStatus() });
     rows.push({ kind: 'info', label: 'Canvas', get: () => `${h.stage.canvas.width}×${h.stage.canvas.height} @ ${window.devicePixelRatio}x` });
     rows.push({ kind: 'slider', label: 'Extra fish to add', min: 10, max: 200, step: 10, get: () => this.extras, set: (v) => (this.extras = v) });
     rows.push({ kind: 'button', label: 'Add extra fish', run: () => h.scene().tank.addExtras(speciesIn(h.current), this.extras) });

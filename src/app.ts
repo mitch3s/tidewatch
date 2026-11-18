@@ -416,6 +416,10 @@ export class App implements GodHost {
     this.brand.innerHTML = `<h1>Tidewatch</h1><p>${escapeHtml(BIOMES[this.current].name)}${multi ? ' · ◀ ▶ switch tank' : ''}</p>`;
   }
 
+  keepAwakeStatus(): string {
+    return this.platform.keepAwakeStatus();
+  }
+
   get debugHudOn(): boolean {
     return this.debugEl !== null;
   }
@@ -443,7 +447,8 @@ export class App implements GodHost {
       `fps           ${this.stage.perf.averageMs ? Math.round(1000 / this.stage.perf.averageMs) : '-'} (target ${this.stage.perf.targetFps})\n` +
       `draw time     ${this.stage.perf.workMs.toFixed(1)} ms per frame\n` +
       `fish          ${this.scene().tank.agents.length}\n` +
-      `canvas        ${this.stage.canvas.width}×${this.stage.canvas.height} (pixel ratio ${window.devicePixelRatio})`;
+      `canvas        ${this.stage.canvas.width}×${this.stage.canvas.height} (pixel ratio ${window.devicePixelRatio})\n` +
+      `keep awake    ${this.platform.keepAwakeStatus()}`;
   }
 }
 

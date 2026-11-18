@@ -262,7 +262,10 @@ Three levels, from fastest to most realistic. Almost all development happens on 
 
 ## 11. Open questions / risks
 
-- **Keep-awake on webOS:** the API needs confirming. Options to investigate: webOS Luna service calls available to web apps, or a hidden muted looping video as a fallback. This needs a check on a real TV (level 3).
+- **Keep-awake on webOS:** confirmed needed: on the LG C6 the TV's screensaver appeared over the app. LG documents no API for this, and the standard Wake Lock API reportedly hangs on webOS. Implemented (2026-11-18), awaiting a TV test:
+  1. The undocumented TV power service handshake used by several open-source webOS apps: register with `luna://com.webos.service.tvpower/power/registerScreenSaverRequest`, then refuse each screensaver request by replying to `responseScreenSaverRequest` with `ack: false` and the request's timestamp. It's unofficial, firmware-dependent, and may not be allowed in an LG Content Store submission.
+  2. Fallback, if that's unavailable or not active within 5 s: a tiny muted looping video, full-size behind the canvas (LG says the screensaver stays away during full-size video; reports vary).
+  The debug readout shows which one is active and how many times the screensaver was refused.
 - **TV performance:** older webOS versions have slow Chromium builds. Mitigations: pre-rendered backgrounds, a fish cap, and an fps fallback. Decide on the minimum supported webOS version once we test on real hardware.
   - *First TV test (LG C6, 2026-11-18):* it ran, but not entirely smoothly. Measuring showed drawing the fish as vectors every frame was the biggest cost, so tank fish are now drawn from cached swim-cycle sprites (about 55% faster in testing), and on webOS the canvas is capped at 1920×1080. After that change, the C6 runs it noticeably smoother. The minimum webOS version is still open: the C6 is a current model.
 - **Remotes without colour buttons:** the LG Magic Remote (e.g. on the C6) has no Red/Green/Yellow/Blue buttons, so development builds also open god mode from the codex's Settings tab.

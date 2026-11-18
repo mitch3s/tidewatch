@@ -1,14 +1,24 @@
 import type { Platform } from './types';
 
 export function createBrowserPlatform(): Platform {
+  let status = 'not requested';
   return {
     name: 'browser',
     keepAwake() {
       // Desktop browsers: the Screen Wake Lock API, where available.
       const wl = (navigator as Navigator & { wakeLock?: { request(type: 'screen'): Promise<unknown> } }).wakeLock;
-      wl?.request('screen').catch(() => {
-        /* not allowed or unsupported; fine for development */
-      });
+      if (!wl) {
+        status = 'wake lock unsupported';
+        return;
+      }
+      status = 'wake lock requested';
+      wl.request('screen').then(
+        () => (status = 'wake lock active'),
+        () => (status = 'wake lock refused'),
+      );
+    },
+    keepAwakeStatus() {
+      return status;
     },
     onVisibilityChange(cb) {
       document.addEventListener('visibilitychange', () => cb(!document.hidden));
