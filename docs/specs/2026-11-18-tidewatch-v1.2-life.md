@@ -1,7 +1,7 @@
 # Tidewatch v1.2: life
 
 **Date:** 2026-11-18
-**Status:** Approved ("let's continue" after v1.1.1)
+**Status:** Implemented in 1.2.0, awaiting a TV test (sound and close-ups especially).
 **Builds on:** [`2026-11-17-tidewatch-design.md`](2026-11-17-tidewatch-design.md), [`2026-11-18-tidewatch-v1.1-look.md`](2026-11-18-tidewatch-v1.1-look.md)
 
 ## 1. Why

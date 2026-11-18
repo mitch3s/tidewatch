@@ -143,3 +143,23 @@ test('a due visitor waits while the codex is open, then appears', async ({ page 
   await expect(page.locator('.tw-codex')).toHaveCount(0);
   await expect(page.locator('.tw-hint')).toHaveClass(/tw-show/, { timeout: 3000 });
 });
+
+test('turning the sound on starts the ambience without errors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/?reset');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight'); // Settings tab
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
+  await expect(focused(page)).toContainText('Ambient sound');
+  await page.keyboard.press('Enter');
+  await expect(focused(page)).toContainText('Quiet');
+  await page.keyboard.press('Enter');
+  await expect(focused(page)).toContainText('Normal');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(3000); // bubbles rise and play sounds meanwhile
+  expect(errors).toEqual([]);
+  expect((await saved(page)).settings.sound).toBe('normal');
+});

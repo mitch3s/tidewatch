@@ -48,6 +48,8 @@ export interface TankSceneOptions {
   debug?: DebugView;
   /** Whether close-ups are switched on in the settings. */
   closeups?: () => boolean;
+  /** A bubble rose (radius in px, world x), for the ambient sound. */
+  onBubble?: (r: number, x: number) => void;
 }
 
 function sceneryFor(biome: BiomeDef): Scenery {
@@ -92,7 +94,7 @@ export class TankScene {
     this.far = new StaticLayer((ctx) => this.scenery.paintFar(ctx));
     this.mid = new StaticLayer((ctx) => this.scenery.paintMid(ctx));
     this.rays = new LightRays(biome.seed + 1);
-    this.bubbles = new Bubbles(this.scenery.bubbleSources, biome.floor.y + 10, biome.seed + 2);
+    this.bubbles = new Bubbles(this.scenery.bubbleSources, biome.floor.y + 10, biome.seed + 2, 70, opts.onBubble);
     this.grass = new SeaGrass(biome.seed + 3, this.scenery.grass, biome.plants);
     const moteRgb = biome.id === 'reef' ? '225,245,255' : '200,180,130';
     this.particles = new Particles(biome.seed + 6, 70, moteRgb);
@@ -152,6 +154,11 @@ export class TankScene {
     const facing = v.poseAt(1).facing > 0 ? 1 : -1;
     this.tank.addSpecies(v.species, { at: { x: p.x, y: p.y, facing } });
     this.visitor = null;
+  }
+
+  /** How dark it is now, 0 (day) .. 1 (night); 0 with day/night lighting off. */
+  get night(): number {
+    return this.dayNight() ? lightingAt(this.hour()).moon : 0;
   }
 
   /** Start a close-up straight away (god mode). */

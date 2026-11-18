@@ -30,6 +30,8 @@ export class Bubbles {
     private readonly floorY: number,
     seed: number,
     private readonly max = 70,
+    /** Called for each new bubble (radius in px, x), e.g. to play a sound. */
+    private readonly onSpawn?: (r: number, x: number) => void,
   ) {
     this.rng = createRng(seed);
     this.sources = sources.map((x) => ({ x, wait: lerp(0, 4, this.rng()), left: 0, next: 0 }));
@@ -83,5 +85,6 @@ export class Bubbles {
     if (this.bubbles.length >= this.max) return;
     const r = lerp(2, 7, this.rng() ** 2);
     this.bubbles.push({ x, y, r, vy: -(45 + r * 12), wobble: lerp(2, 6, this.rng()), phase: this.rng() * TAU });
+    this.onSpawn?.(r, x);
   }
 }

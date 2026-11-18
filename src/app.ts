@@ -1,3 +1,4 @@
+import { Ambience } from './audio/ambience';
 import { BIOMES } from './data/biomes';
 import { APP_VERSION } from './version';
 import { ALL_SPECIES, getSpecies } from './data/species';
@@ -73,6 +74,8 @@ export class App implements GodHost {
   private codex: CodexScreen | null = null;
   private lastInputAt = performance.now();
   private time = 0;
+  /** Ambient sound (spec v1.2 §5). */
+  private readonly ambience = new Ambience();
 
   constructor(
     readonly stage: Stage,
@@ -104,9 +107,14 @@ export class App implements GodHost {
       if (flags?.god) this.god.open();
     }
     if (flags) this.applyDevFlags(flags);
-    new InputManager().on((action) => this.onAction(action));
+    new InputManager().on((action) => {
+      // Sound may only start after a key press (TV and browser rules).
+      this.ambience.unlock();
+      this.onAction(action);
+    });
     const pointer = new PointerInput({ canvas: stage.canvas, toStage: (x, y) => stage.clientToStage(x, y) });
     pointer.on((e) => {
+      if (e.kind === 'down') this.ambience.unlock();
       this.idle.poke(performance.now());
       this.lastInputAt = performance.now();
       if (e.kind !== 'down' || e.overUi || this.codex || this.god?.isOpen) return;
@@ -124,6 +132,7 @@ export class App implements GodHost {
 
   start(): void {
     this.platform.keepAwake();
+    this.ambience.setLevel(this.game.state.settings.sound);
     this.stage.start({
       update: (dt) => this.update(dt),
       render: (ctx, alpha, time) => this.render(ctx, alpha, time),
@@ -142,6 +151,8 @@ export class App implements GodHost {
       s.closeupsAllowed = biome === this.current && this.switching === null && this.codex === null;
       s.update(dt);
     }
+    this.ambience.setNight(this.scene().night);
+    this.ambience.setDucked(this.codex !== null);
     this.idle.tick(performance.now());
     if (this.idleDisabled) this.ui.setIdle(false);
     this.god?.update(dt);
@@ -206,6 +217,10 @@ export class App implements GodHost {
         hour: () => this.hourOverride ?? this.opts.hour ?? deviceHour(),
         dayNight: () => this.game.state.settings.dayNight,
         closeups: () => this.game.state.settings.closeups,
+        // Only the tank on screen makes bubble sounds.
+        onBubble: (r, x) => {
+          if (biome === this.current && this.switching === null) this.ambience.bubble(Math.min(1, r / 7), x / 960 - 1);
+        },
         debug: this.debugView,
       });
       s.prepare(this.stage.pixelScale);
@@ -226,6 +241,7 @@ export class App implements GodHost {
   /** Throw away the scenes and rebuild them from the saved state (god mode). */
   rebuildScenes(): void {
     this.scenes.clear();
+    this.ambience.setLevel(this.game.state.settings.sound);
     if (!this.game.state.unlockedBiomes.includes(this.currentBiome)) this.currentBiome = this.game.state.unlockedBiomes[0]!;
     this.scene();
     this.updateBrand();
@@ -275,7 +291,10 @@ export class App implements GodHost {
         },
         setRotation: (min: RotationMinutes) => this.game.setSettings({ rotationMin: min }),
         setDayNight: (on: boolean) => this.game.setSettings({ dayNight: on }),
-        setSettings: (patch) => this.game.setSettings(patch),
+        setSettings: (patch) => {
+          this.game.setSettings(patch);
+          if (patch.sound) this.ambience.setLevel(patch.sound);
+        },
         resetProgress: () => {
           this.game.replaceState(createInitialState(ALL_SPECIES, createRng(Date.now())));
           this.rebuildScenes();
