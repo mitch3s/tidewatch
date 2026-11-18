@@ -1,4 +1,5 @@
 import type { Species } from '../data/types';
+import { BIOME_ORDER } from '../data/progression';
 import { createInitialState, type SaveState } from '../save/schema';
 
 export interface Preset {
@@ -29,7 +30,7 @@ export const PRESETS: readonly Preset[] = [
     create(roster, rng) {
       const s = createInitialState(roster, rng);
       for (const sp of roster) s.species[sp.id] = { state: 'collected', collectedAt: now() };
-      s.unlockedBiomes = ['reef', 'amazon'];
+      s.unlockedBiomes = [...BIOME_ORDER];
       return s;
     },
   },

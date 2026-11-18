@@ -9,10 +9,24 @@ export interface BiomeRule {
   requires: { biome: BiomeId; collected: number } | null;
 }
 
+/**
+ * The deep sea tank (spec v1.3) goes live when this is true. Its animals
+ * must first be registered in species/index.ts with codex facts checked
+ * against their sources; until then they're in species/pending.ts.
+ */
+export const DEEP_SEA_READY: boolean = false;
+
+const DEEP_RULE: BiomeRule = {
+  biome: 'deep',
+  starters: ['atolla-jellyfish', 'spotted-lanternfish'],
+  requires: { biome: 'amazon', collected: 4 },
+};
+
 export const BIOME_RULES: readonly BiomeRule[] = [
   { biome: 'reef', starters: ['ocellaris-clownfish', 'yellow-tang'], requires: null },
   { biome: 'amazon', starters: ['neon-tetra', 'bronze-corydoras'], requires: { biome: 'reef', collected: 4 } },
+  ...(DEEP_SEA_READY ? [DEEP_RULE] : []),
 ];
 
 /** Biome order for switching tanks and codex tabs. */
-export const BIOME_ORDER: readonly BiomeId[] = ['reef', 'amazon'];
+export const BIOME_ORDER: readonly BiomeId[] = BIOME_RULES.map((r) => r.biome);

@@ -37,6 +37,17 @@ type Page = { kind: 'grid'; tab: BiomeId | 'settings' } | { kind: 'entry'; id: s
 const RARITY_LABEL = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare visitor' } as const;
 const ROTATIONS: RotationMinutes[] = [0, 5, 15, 30];
 const SOUND_LABEL = { off: 'Off', quiet: 'Quiet', normal: 'Normal' } as const;
+/** Water behind fish on codex cards and entry pages, top and bottom colour per tank. */
+const CARD_WATER: Record<BiomeId, [string, string]> = {
+  reef: ['#0d5d7e', '#06324c'],
+  amazon: ['#4c5126', '#232510'],
+  deep: ['#0b1a30', '#02060e'],
+};
+const ENTRY_WATER: Record<BiomeId, [string, string]> = {
+  reef: ['#0e6488', '#052b42'],
+  amazon: ['#575c2c', '#1f210e'],
+  deep: ['#0c1c34', '#02050c'],
+};
 
 /**
  * The codex (spec 5.2, 5.3, 5.4): a tab per tank with a card per species, a
@@ -402,8 +413,8 @@ export class CodexScreen {
     const s = getSpecies(id)!;
     const state = this.host.state.species[id]?.state ?? 'unseen';
     const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, s.biome === 'reef' ? '#0d5d7e' : '#4c5126');
-    g.addColorStop(1, s.biome === 'reef' ? '#06324c' : '#232510');
+    g.addColorStop(0, CARD_WATER[s.biome][0]);
+    g.addColorStop(1, CARD_WATER[s.biome][1]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
     if (state === 'unseen') {
@@ -433,8 +444,8 @@ export class CodexScreen {
       canvas: fish,
       draw: (ctx, w, h) => {
         const g = ctx.createLinearGradient(0, 0, 0, h);
-        g.addColorStop(0, s.biome === 'reef' ? '#0e6488' : '#575c2c');
-        g.addColorStop(1, s.biome === 'reef' ? '#052b42' : '#1f210e');
+        g.addColorStop(0, ENTRY_WATER[s.biome][0]);
+        g.addColorStop(1, ENTRY_WATER[s.biome][1]);
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, w, h);
         const length = Math.min(w * 0.6, (h * 0.62) / Math.max(0.2, (s.look.body.upper ?? 0.2) + 0.14));

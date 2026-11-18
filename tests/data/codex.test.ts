@@ -10,10 +10,11 @@ describe.each(ALL_SPECIES.map((s) => [s.id, s] as const))('codex: %s', (id, s) =
     for (const field of [c.nativeRange, c.habitat, c.diet]) expect(field.trim().length).toBeGreaterThan(10);
     expect(c.size.cm).toBeGreaterThan(0);
     expect(['TL', 'SL']).toContain(c.size.measure);
-    expect(c.water.type).toBe(s.biome === 'reef' ? 'salt' : 'fresh');
+    expect(c.water.type).toBe(s.biome === 'amazon' ? 'fresh' : 'salt');
     if (c.water.tempC) {
       expect(c.water.tempC[0]).toBeLessThan(c.water.tempC[1]);
-      expect(c.water.tempC[0]).toBeGreaterThanOrEqual(15);
+      // Deep-sea water is cold, often just a few degrees.
+      expect(c.water.tempC[0]).toBeGreaterThanOrEqual(s.biome === 'deep' ? -2 : 15);
       expect(c.water.tempC[1]).toBeLessThanOrEqual(35);
     }
   });
@@ -28,9 +29,10 @@ describe.each(ALL_SPECIES.map((s) => [s.id, s] as const))('codex: %s', (id, s) =
     }
   });
 
-  it('cites FishBase plus any other sources, as https links', () => {
+  it('cites FishBase (SeaLifeBase for animals that aren\'t fish) plus any other sources, as https links', () => {
     expect(c.sources.length).toBeGreaterThanOrEqual(1);
-    expect(c.sources.some((x) => x.label === 'FishBase')).toBe(true);
+    const primary = s.look.creature ? 'SeaLifeBase' : 'FishBase';
+    expect(c.sources.some((x) => x.label === primary)).toBe(true);
     for (const src of c.sources) {
       expect(src.label.length).toBeGreaterThan(2);
       expect(src.url).toMatch(/^https:\/\/[^\s]+$/);
@@ -44,8 +46,8 @@ describe.each(ALL_SPECIES.map((s) => [s.id, s] as const))('codex: %s', (id, s) =
       for (const [lon, lat] of poly) {
         expect(lon).toBeGreaterThanOrEqual(-180);
         expect(lon).toBeLessThanOrEqual(180);
-        // All v1 species are tropical or subtropical.
-        expect(Math.abs(lat)).toBeLessThanOrEqual(40);
+        // Reef and Amazon species are tropical or subtropical; deep-sea ones range much wider.
+        expect(Math.abs(lat)).toBeLessThanOrEqual(s.biome === 'deep' ? 85 : 40);
       }
     }
     // Reef fish live in the oceans' tropics, Amazon fish in South America.
@@ -66,4 +68,17 @@ describe.each(ALL_SPECIES.map((s) => [s.id, s] as const))('codex: %s', (id, s) =
 it('has no codex entries for species that do not exist', () => {
   const ids = new Set(ALL_SPECIES.map((s) => s.id));
   for (const id of Object.keys(CODEX)) expect(ids.has(id)).toBe(true);
+});
+
+it('starts every tank with species that exist, in that tank', async () => {
+  const { BIOME_RULES } = await import('../../src/data/progression');
+  for (const rule of BIOME_RULES) {
+    for (const id of rule.starters) expect(ALL_SPECIES.find((sp) => sp.id === id)?.biome).toBe(rule.biome);
+  }
+});
+
+it('has no species both registered and still pending', async () => {
+  const { PENDING_DEEP } = await import('../../src/data/species/pending');
+  const ids = new Set(ALL_SPECIES.map((s) => s.id));
+  for (const d of PENDING_DEEP) expect(ids.has(d.id)).toBe(false);
 });

@@ -31,6 +31,8 @@ export interface Codex {
 }
 
 const fishbase = (path: string): Source => ({ label: 'FishBase', url: `https://www.fishbase.se/summary/${path}` });
+/** SeaLifeBase: FishBase's sister database, for animals that aren't fish (deep sea, v1.3). */
+export const sealifebase = (path: string): Source => ({ label: 'SeaLifeBase', url: `https://www.sealifebase.se/summary/${path}` });
 
 export const CODEX: Record<string, Codex> = {
   'ocellaris-clownfish': {

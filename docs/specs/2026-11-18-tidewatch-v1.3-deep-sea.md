@@ -42,6 +42,13 @@ Every fact must be checked against a source, as for v1 (FishBase for fish; SeaLi
 
 The codex tests also need adjusting for the deep sea: temperatures below 15 °C, latitudes beyond 40°, and SeaLifeBase accepted instead of FishBase for animals that aren't fish.
 
-## 6. Then
+## 6. Finishing (in a session that can reach the sources)
 
-Register the species, add the progression rule, codex tab colours, presets, README and version 1.3.0.
+Everything except the facts is wired and tested. To go live:
+
+1. For each of the six animals, write its entry in `src/data/codex.ts` from the sources only (no facts from memory): native range and a rough `range` outline, habitat and depth, maximum size (TL/SL, or bell diameter / total length for the non-fish, stated in the entry), diet, water type `salt` and temperature if a source gives one, 2–3 fun facts, sources. Fish cite FishBase; the jellyfish and cephalopods cite SeaLifeBase (`sealifebase()` helper). Where sources disagree, say less.
+2. Move the six definitions from `src/data/species/pending.ts` into their own files and `ALL_SPECIES` in `src/data/species/index.ts`; delete them from `PENDING_DEEP` (a test fails while a species is in both).
+3. Set `DEEP_SEA_READY = true` in `src/data/progression.ts`. That adds the unlock rule (4 Amazon species; starters Atolla jellyfish and spotted lanternfish), the codex tab and tank switching.
+4. Add the six to the @visual species test, update the README (tanks, roster) and the original design spec's roster, and release 1.3.0.
+
+Already done: codex card colours for the deep tank, codex test rules for deep-sea animals (cold water down to −2 °C, latitudes to 85°, SeaLifeBase for non-fish), the "everything collected" god-mode preset, and a test that every tank's starters exist in that tank.
