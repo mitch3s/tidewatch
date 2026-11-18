@@ -86,7 +86,7 @@ test('god mode opens from the codex settings (for remotes without colour buttons
   await page.keyboard.press('ArrowRight'); // Settings tab
   const row = page.locator('[data-setting="god"]');
   await expect(row).toContainText('Open god mode');
-  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
+  for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowDown');
   await expect(page.locator('.tw-codex .tw-focused')).toContainText('Open god mode');
   await page.keyboard.press('Enter');
   await expect(page.locator('.tw-codex')).toHaveCount(0);

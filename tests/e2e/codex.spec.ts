@@ -101,9 +101,17 @@ test('settings change with the remote and are saved', async ({ page }) => {
   await expect(focused(page)).toContainText('Day and night lighting');
   await page.keyboard.press('Enter');
   await expect(focused(page)).toContainText('Off');
+  await page.keyboard.press('ArrowDown');
+  await expect(focused(page)).toContainText('Close-ups');
+  await page.keyboard.press('Enter');
+  await expect(focused(page)).toContainText('Off');
+  await page.keyboard.press('ArrowDown');
+  await expect(focused(page)).toContainText('Ambient sound');
+  await page.keyboard.press('ArrowRight');
+  await expect(focused(page)).toContainText('Quiet');
   await page.keyboard.press('Escape'); // closing the codex saves
   const s = await saved(page);
-  expect(s.settings).toEqual({ rotationMin: 30, dayNight: false });
+  expect(s.settings).toEqual({ rotationMin: 30, dayNight: false, closeups: false, sound: 'quiet' });
 });
 
 test('reset progress needs a second press', async ({ page }) => {
@@ -112,9 +120,7 @@ test('reset progress needs a second press', async ({ page }) => {
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowDown');
   await expect(focused(page)).toContainText('Reset progress');
   await page.keyboard.press('Enter');
   await expect(focused(page)).toContainText('Press OK again');

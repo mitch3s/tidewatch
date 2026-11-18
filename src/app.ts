@@ -138,7 +138,10 @@ export class App implements GodHost {
     const gameMs = this.clock.advance(realMs);
     this.game.tick(gameMs, realMs, { biome: this.current, visitorsAllowed: this.switching === null && this.codex === null });
 
-    for (const s of this.scenes.values()) s.update(dt);
+    for (const [biome, s] of this.scenes) {
+      s.closeupsAllowed = biome === this.current && this.switching === null && this.codex === null;
+      s.update(dt);
+    }
     this.idle.tick(performance.now());
     if (this.idleDisabled) this.ui.setIdle(false);
     this.god?.update(dt);
@@ -202,6 +205,7 @@ export class App implements GodHost {
       s = new TankScene(BIOMES[biome], fish, {
         hour: () => this.hourOverride ?? this.opts.hour ?? deviceHour(),
         dayNight: () => this.game.state.settings.dayNight,
+        closeups: () => this.game.state.settings.closeups,
         debug: this.debugView,
       });
       s.prepare(this.stage.pixelScale);
@@ -271,6 +275,7 @@ export class App implements GodHost {
         },
         setRotation: (min: RotationMinutes) => this.game.setSettings({ rotationMin: min }),
         setDayNight: (on: boolean) => this.game.setSettings({ dayNight: on }),
+        setSettings: (patch) => this.game.setSettings(patch),
         resetProgress: () => {
           this.game.replaceState(createInitialState(ALL_SPECIES, createRng(Date.now())));
           this.rebuildScenes();
@@ -412,6 +417,7 @@ export class App implements GodHost {
     if (flags.unlockAll) for (const b of BIOME_ORDER) this.game.unlockBiome(b);
     if (flags.collectAll) for (const s of ALL_SPECIES) this.game.collect(s.id);
     if (flags.arrivalNow) this.game.forceArrival();
+    if (flags.closeupNow) requestAnimationFrame(() => this.scene().startCloseup());
     if (flags.visitorNow) {
       // Wait for the first frame so the scene exists, then summon.
       requestAnimationFrame(() => {

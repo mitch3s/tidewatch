@@ -6,7 +6,7 @@ import { BIOME_ORDER, BIOME_RULES } from '../data/progression';
 import type { BiomeId, Species } from '../data/types';
 import type { Action } from '../input/actions';
 import { renderFish, restPose } from '../render/fish/renderFish';
-import type { RotationMinutes, SaveState } from '../save/schema';
+import { type RotationMinutes, type SaveState, SOUND_LEVELS } from '../save/schema';
 import { TAU } from '../util/math';
 import { FocusGroup } from './focus';
 import { escapeHtml, type UiRoot } from './root';
@@ -17,6 +17,8 @@ export interface CodexHost {
   readonly state: SaveState;
   setRotation(min: RotationMinutes): void;
   setDayNight(on: boolean): void;
+  /** Change other settings (close-ups, sound). */
+  setSettings(patch: Partial<SaveState['settings']>): void;
   resetProgress(): void;
   /** Close the app (only offered on the TV). */
   exitApp(): void;
@@ -34,6 +36,7 @@ type Page = { kind: 'grid'; tab: BiomeId | 'settings' } | { kind: 'entry'; id: s
 
 const RARITY_LABEL = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare visitor' } as const;
 const ROTATIONS: RotationMinutes[] = [0, 5, 15, 30];
+const SOUND_LABEL = { off: 'Off', quiet: 'Quiet', normal: 'Normal' } as const;
 
 /**
  * The codex (spec 5.2, 5.3, 5.4): a tab per tank with a card per species, a
@@ -144,6 +147,8 @@ export class CodexScreen {
     switch (el.dataset.setting) {
       case 'rotation':
       case 'daynight':
+      case 'closeups':
+      case 'sound':
         this.adjustSetting(1);
         return;
       case 'reset':
@@ -182,6 +187,17 @@ export class CodexScreen {
     }
     if (s === 'daynight') {
       this.host.setDayNight(!settings.dayNight);
+      this.refreshSettings();
+      return true;
+    }
+    if (s === 'closeups') {
+      this.host.setSettings({ closeups: !settings.closeups });
+      this.refreshSettings();
+      return true;
+    }
+    if (s === 'sound') {
+      const i = SOUND_LEVELS.indexOf(settings.sound);
+      this.host.setSettings({ sound: SOUND_LEVELS[(i + dir + SOUND_LEVELS.length) % SOUND_LEVELS.length]! });
       this.refreshSettings();
       return true;
     }
@@ -283,6 +299,8 @@ export class CodexScreen {
     return `<div class="tw-settings">
       <div class="tw-setting" data-focus data-setting="rotation"><span>Switch tanks automatically</span><b>‹ ${rot} ›</b></div>
       <div class="tw-setting" data-focus data-setting="daynight"><span>Day and night lighting</span><b>‹ ${s.dayNight ? 'On' : 'Off'} ›</b></div>
+      <div class="tw-setting" data-focus data-setting="closeups"><span>Close-ups of fish now and then</span><b>‹ ${s.closeups ? 'On' : 'Off'} ›</b></div>
+      <div class="tw-setting" data-focus data-setting="sound"><span>Ambient sound</span><b>‹ ${SOUND_LABEL[s.sound]} ›</b></div>
       <div class="tw-setting tw-danger${this.confirmReset !== null ? ' tw-armed' : ''}" data-focus data-setting="reset"><span>Reset progress</span><b>${reset}</b></div>
       ${DEV_TOOLS && this.host.openGodMode ? `<div class="tw-setting" data-focus data-setting="god"><span>Open god mode</span><b>Development build</b></div>` : ''}
       ${this.host.canExit ? `<div class="tw-setting${this.confirmExit !== null ? ' tw-armed' : ''}" data-focus data-setting="exit"><span>Exit Tidewatch</span><b>${exit}</b></div>` : ''}

@@ -42,7 +42,7 @@ Open the URL Vite prints (usually http://localhost:5173) in Chrome. The app is d
 
 After 10 seconds without input the on-screen text fades out; the first key press after that only wakes it. The codex closes itself after 90 seconds without input, so nothing static stays on screen.
 
-The codex's **Settings** tab sets automatic tank switching (off, 5, 15 or 30 minutes), turns day and night lighting on or off, and can reset progress. On the TV it also has Exit.
+The codex's **Settings** tab sets automatic tank switching (off, 5, 15 or 30 minutes), turns day and night lighting on or off, turns the occasional close-ups of a fish on or off, sets the ambient sound (off, quiet or normal), and can reset progress. On the TV it also has Exit.
 
 ### Useful URLs
 
@@ -58,6 +58,7 @@ These debug flags work in development builds only (`npm run dev` or `npm run bui
 | `/?reset` | Start from a fresh save |
 | `/?debug` | Show the timers and frame rate |
 | `/?god` | Open god mode at startup |
+| `/?closeup=now` | Start a close-up on a fish straight away |
 
 Flags can be combined, e.g. `/?reset&visitor=now&debug`. These work in every build:
 

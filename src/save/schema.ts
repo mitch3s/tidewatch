@@ -7,6 +7,8 @@ export const SAVE_VERSION = 1;
 
 export type CollectionState = 'unseen' | 'sighted' | 'collected';
 export type RotationMinutes = 0 | 5 | 15 | 30;
+export type SoundLevel = 'off' | 'quiet' | 'normal';
+export const SOUND_LEVELS: readonly SoundLevel[] = ['off', 'quiet', 'normal'];
 
 export interface SpeciesProgress {
   state: CollectionState;
@@ -21,7 +23,14 @@ export interface SaveState {
   unlockedBiomes: BiomeId[];
   /** Remaining game time (ms) until the next event. */
   timers: { nextArrivalMs: number; nextVisitorMs: number };
-  settings: { rotationMin: RotationMinutes; dayNight: boolean };
+  settings: {
+    rotationMin: RotationMinutes;
+    dayNight: boolean;
+    /** Slow camera close-ups on one fish (v1.2). */
+    closeups: boolean;
+    /** Ambient sound (v1.2). */
+    sound: SoundLevel;
+  };
 }
 
 const MIN = 60_000;
@@ -46,6 +55,6 @@ export function createInitialState(roster: readonly Species[], rng: () => number
     species,
     unlockedBiomes,
     timers: { nextArrivalMs: randomDelay(ARRIVAL_DELAY_MS, rng), nextVisitorMs: randomDelay(VISITOR_DELAY_MS, rng) },
-    settings: { rotationMin: 15, dayNight: true },
+    settings: { rotationMin: 15, dayNight: true, closeups: true, sound: 'off' },
   };
 }

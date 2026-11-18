@@ -10,7 +10,8 @@ import { Caustics } from './caustics';
 import { STAGE_HEIGHT, STAGE_WIDTH } from '../stage';
 import { createAmazonScenery } from './amazon';
 import { Bubbles } from './bubbles';
-import { Camera } from './camera';
+import { Camera, CLOSEUP_ZOOM } from './camera';
+import { Closeups } from './closeups';
 import { lightingAt, mixRgb } from './daynight';
 import { StaticLayer } from './layers';
 import { LightRays } from './lightRays';
@@ -45,6 +46,8 @@ export interface TankSceneOptions {
   dayNight?: () => boolean;
   /** God-mode debug drawing. */
   debug?: DebugView;
+  /** Whether close-ups are switched on in the settings. */
+  closeups?: () => boolean;
 }
 
 function sceneryFor(biome: BiomeDef): Scenery {
@@ -70,6 +73,10 @@ export class TankScene {
   private readonly shimmer: SurfaceShimmer;
   private pixelScale = 1;
   private readonly sprites: FishSprites;
+  private readonly closeups: Closeups;
+  private readonly closeupsOn: () => boolean;
+  /** Set by the app: whether this tank is on screen with nothing else going on. */
+  closeupsAllowed = false;
   private readonly hour: () => number;
   private readonly dayNight: () => boolean;
   private readonly debug: DebugView | undefined;
@@ -93,7 +100,8 @@ export class TankScene {
     this.shadows = new FloorShadows(biome.floor.y);
     this.motes = new NearMotes(biome.seed + 7, moteRgb);
     this.shimmer = new SurfaceShimmer(biome.seed + 8);
-    this.sprites = new FishSprites(() => this.pixelScale, biome.haze);
+    // Cached at close-up resolution, so fish stay sharp when the camera zooms in.
+    this.sprites = new FishSprites(() => this.pixelScale * CLOSEUP_ZOOM, biome.haze);
     this.rng = createRng(biome.seed + 5 + Date.now());
     this.tank = new Tank(
       {
@@ -110,6 +118,8 @@ export class TankScene {
         return d.getHours() + d.getMinutes() / 60;
       });
     this.dayNight = opts.dayNight ?? (() => true);
+    this.closeupsOn = opts.closeups ?? (() => true);
+    this.closeups = new Closeups(this.rng);
     this.debug = opts.debug;
   }
 
@@ -129,6 +139,8 @@ export class TankScene {
   /** Start a rare visitor crossing the tank. */
   startVisitor(species: Species): void {
     this.visitor = new VisitorSwimmer(species, this.tank.env.bounds, CATCH_WINDOW_MS / 1000, this.rng);
+    // The visitor needs the whole tank in view.
+    this.closeups.end();
   }
 
   /** The visitor was caught: sparkles, and it joins the tank where it is. */
@@ -140,6 +152,11 @@ export class TankScene {
     const facing = v.poseAt(1).facing > 0 ? 1 : -1;
     this.tank.addSpecies(v.species, { at: { x: p.x, y: p.y, facing } });
     this.visitor = null;
+  }
+
+  /** Start a close-up straight away (god mode). */
+  startCloseup(): boolean {
+    return this.closeups.start(this.tank.agents);
   }
 
   /** Whether a screen point (stage coordinates) is on the visitor, for pointer catching. */
@@ -162,6 +179,7 @@ export class TankScene {
     // Fish rest at night (spec v1.2 §3).
     this.tank.activity = this.dayNight() ? lerp(0.35, 1, lightingAt(this.hour()).rays) : 1;
     this.tank.update(dt);
+    this.closeups.update(dt, this.tank.agents, this.camera, this.closeupsAllowed && this.closeupsOn() && !this.visitor);
     this.bubbles.update(dt);
     this.particles.update(dt);
     this.motes.update(dt);
