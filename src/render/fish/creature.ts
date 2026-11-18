@@ -243,26 +243,31 @@ function drawCephalopod(ctx: CanvasRenderingContext2D, form: CephalopodForm, pos
   ctx.fill(mantle);
   ctx.restore();
 
-  // Eye, on the side the animal is heading toward.
-  const ex = m.width * 0.22;
-  const ey = mantleCy + m.height * 0.3;
-  const r = form.eyeSize;
-  ctx.fillStyle = 'rgba(10,6,10,0.85)';
-  ctx.beginPath();
-  ctx.arc(ex, ey, r * 1.2, 0, TAU);
-  ctx.fill();
-  ctx.fillStyle = form.eyeColor;
-  ctx.beginPath();
-  ctx.arc(ex, ey, r, 0, TAU);
-  ctx.fill();
-  ctx.fillStyle = '#050505';
-  ctx.beginPath();
-  ctx.arc(ex + r * 0.1, ey, r * 0.55, 0, TAU);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.beginPath();
-  ctx.arc(ex + r * 0.35, ey - r * 0.35, r * 0.2, 0, TAU);
-  ctx.fill();
+  // Two eyes, seen from slightly to the front: turned a little toward the
+  // way it's heading, so the far eye sits closer in and looks a bit smaller.
+  const ey = mantleCy + m.height * 0.28;
+  for (const [ex, scale] of [
+    [-m.width * 0.15, 0.85],
+    [m.width * 0.25, 1],
+  ] as const) {
+    const r = form.eyeSize * scale;
+    ctx.fillStyle = 'rgba(10,6,10,0.85)';
+    ctx.beginPath();
+    ctx.arc(ex, ey, r * 1.2, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = form.eyeColor;
+    ctx.beginPath();
+    ctx.arc(ex, ey, r, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = '#050505';
+    ctx.beginPath();
+    ctx.arc(ex + r * 0.1, ey, r * 0.55, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath();
+    ctx.arc(ex + r * 0.3, ey - r * 0.35, r * 0.2, 0, TAU);
+    ctx.fill();
+  }
 
   if (look.glow) {
     ctx.fillStyle = look.glow.color;
