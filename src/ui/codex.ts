@@ -3,6 +3,7 @@ import { APP_COMMIT, APP_VERSION } from '../version';
 import { DEV_TOOLS } from '../dev/enabled';
 import { ALL_SPECIES, getSpecies } from '../data/species';
 import { BIOME_ORDER, BIOME_RULES } from '../data/progression';
+import type { Codex } from '../data/codex';
 import type { BiomeId, Species } from '../data/types';
 import type { Action } from '../input/actions';
 import { renderFish, restPose } from '../render/fish/renderFish';
@@ -33,6 +34,13 @@ export interface CodexHost {
 }
 
 type Page = { kind: 'grid'; tab: BiomeId | 'settings' } | { kind: 'entry'; id: string };
+
+/** How each size measure is explained after the number (see Codex.size). */
+const SIZE_NOTE: Record<Codex['size']['measure'], string> = {
+  TL: '',
+  SL: ' (not counting the tail fin)',
+  WD: ' across the bell',
+};
 
 const RARITY_LABEL = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare visitor' } as const;
 const ROTATIONS: RotationMinutes[] = [0, 5, 15, 30];
@@ -348,7 +356,7 @@ export class CodexScreen {
     }
     const date = p.collectedAt ? new Date(p.collectedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : '';
     const temp = c.water.tempC ? `, ${c.water.tempC[0]}–${c.water.tempC[1]} °C` : '';
-    const size = `Up to ${c.size.cm} cm${c.size.measure === 'SL' ? ' (not counting the tail fin)' : ''}`;
+    const size = `Up to ${c.size.cm} cm${SIZE_NOTE[c.size.measure]}`;
     const fact = (label: string, value: string) => `<div class="tw-fact"><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`;
     return `<div class="tw-entry">
       <div class="tw-entry-visual"><canvas class="tw-entry-fish"></canvas><canvas class="tw-entry-map"></canvas><div class="tw-map-label">Native range</div></div>

@@ -1,7 +1,7 @@
 # Tidewatch v1.3: the deep sea
 
 **Date:** 2026-11-18
-**Status:** Roster approved. Rendering, behaviour and scenery built; **not yet playable** because the codex facts still need checking against sources (§5).
+**Status:** Roster approved. Rendering, behaviour and scenery built. Codex entries for the Atolla jellyfish, vampire squid and dumbo octopus are written from SeaLifeBase, MBARI and Wikipedia (in `PENDING_CODEX`, `src/data/species/pending.ts`). **Not yet playable:** the three fish still need FishBase, which couldn't be reached (§6).
 **Builds on:** [`2026-11-18-tidewatch-v1.2-life.md`](2026-11-18-tidewatch-v1.2-life.md)
 
 ## 1. The tank
@@ -48,5 +48,11 @@ Everything except the facts is wired and tested. To go live:
 2. Move the six definitions from `src/data/species/pending.ts` into their own files and `ALL_SPECIES` in `src/data/species/index.ts`; delete them from `PENDING_DEEP` (a test fails while a species is in both).
 3. Set `DEEP_SEA_READY = true` in `src/data/progression.ts`. That adds the unlock rule (4 Amazon species; starters Atolla jellyfish and spotted lanternfish), the codex tab and tank switching.
 4. Add the six to the @visual species test, update the README (tanks, roster) and the original design spec's roster, and release 1.3.0.
+
+Progress (18 November 2026):
+
+- The three animals that aren't fish have their codex entries in `PENDING_CODEX` (`src/data/species/pending.ts`), checked by the codex tests. Move them to `CODEX` in step 2. Atolla's depth is left out, because SeaLifeBase (0–1500 m) and Wikipedia (1,000–4,000 m) disagree. The dumbo octopus is a genus, so its size is the largest one SeaLifeBase lists for any species in it (*G. umbellata*, 40 cm TL).
+- Codex sizes can now be `WD` (bell width, shown as "across the bell"), as SeaLifeBase gives it for jellyfish.
+- The three fish are blocked: www.fishbase.se answered 503 for every page, and its mirrors weren't reachable. Their Wikipedia pages were read, but the entries must cite FishBase.
 
 Already done: codex card colours for the deep tank, codex test rules for deep-sea animals (cold water down to −2 °C, latitudes to 85°, SeaLifeBase for non-fish), the "everything collected" god-mode preset, and a test that every tank's starters exist in that tank.

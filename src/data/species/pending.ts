@@ -1,3 +1,4 @@
+import { type Codex, sealifebase } from '../codex';
 import type { FishLook } from '../../render/fish/look';
 import type { SpeciesDef } from '../types';
 
@@ -183,3 +184,90 @@ export const PENDING_DEEP: readonly SpeciesDef[] = [
   dumboOctopus,
   humpbackAnglerfish,
 ];
+
+/**
+ * Codex entries already checked against their sources (18 November 2026),
+ * ready to move into codex.ts when the species are registered. Only the three
+ * animals that aren't fish are here: FishBase couldn't be reached for the
+ * three fish (spotted lanternfish, silver hatchetfish, humpback anglerfish).
+ * Where sources disagreed (Atolla's depth), the entry says less.
+ */
+export const PENDING_CODEX: Record<string, Codex> = {
+  'atolla-jellyfish': {
+    nativeRange: 'Oceans around the world: the Atlantic, Indian and Pacific oceans and the Antarctic, from tropical to polar waters',
+    // SeaLifeBase: 78°N to 44°S, all longitudes.
+    range: [
+      [
+        [-180, 78],
+        [180, 78],
+        [180, -44],
+        [-180, -44],
+      ],
+    ],
+    habitat: 'Open water far offshore, in the deep sea',
+    size: { cm: 15, measure: 'WD' },
+    diet: 'Crustaceans and other drifting food',
+    water: { type: 'salt' },
+    funFacts: [
+      'When attacked, it sets off a series of blue flashes, which may draw in bigger predators more interested in its attacker than in the jelly itself.',
+      'One of its tentacles grows much longer than the others, and is thought to help it catch prey.',
+      'The marine biologist Edith Widder built a camera lure, the E-jelly, that copies its alarm flashes.',
+    ],
+    sources: [sealifebase('Atolla-wyvillei'), { label: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Atolla_jellyfish' }],
+  },
+
+  'vampire-squid': {
+    nativeRange: 'Tropical and temperate oceans around the world',
+    // SeaLifeBase: 44°N to 35°S, all longitudes.
+    range: [
+      [
+        [-180, 44],
+        [180, 44],
+        [180, -35],
+        [-180, -35],
+      ],
+    ],
+    habitat: 'The open ocean at about 600 to 900 m and deeper, where no sunlight reaches; especially common where the water holds very little oxygen',
+    size: { cm: 30, measure: 'TL' },
+    diet: 'Marine snow: drifting detritus, including the remains of jelly-like zooplankton, plus small zooplankton',
+    water: { type: 'salt' },
+    funFacts: [
+      'Despite its name it is neither a vampire nor a squid, but the last surviving member of an ancient group of cephalopods.',
+      "It doesn't drink blood: it gathers drifting bits of food with two long, thin, sticky filaments.",
+      'If disturbed, it can release a sticky cloud of glowing blue mucus from its arm tips.',
+    ],
+    sources: [
+      sealifebase('Vampyroteuthis-infernalis'),
+      { label: 'MBARI', url: 'https://www.mbari.org/animal/vampire-squid/' },
+      { label: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Vampire_squid' },
+    ],
+  },
+
+  'dumbo-octopus': {
+    nativeRange: 'Probably all the world\'s oceans: found off Oregon, California, the Azores, New Zealand, Australia, the Philippines and Argentina, and in the Gulf of Mexico',
+    // Thought to be worldwide; drawn as a broad band covering the places it has been found.
+    range: [
+      [
+        [-180, 55],
+        [180, 55],
+        [180, -50],
+        [-180, -50],
+      ],
+    ],
+    habitat: 'On and just above the seafloor in the cold deep sea; species in the genus have been found from about 480 m down to nearly 7,000 m',
+    // The largest length SeaLifeBase lists for the genus (Grimpoteuthis umbellata).
+    size: { cm: 40, measure: 'TL' },
+    diet: 'Crustaceans, bivalves, worms and copepods',
+    water: { type: 'salt' },
+    funFacts: [
+      'Its nickname comes from the two ear-like fins above its eyes, which recall the title character of Disney\'s 1941 film Dumbo.',
+      'Dumbo octopuses are the deepest-living octopuses known: one was filmed 6,957 m down in the Java Trench in 2020.',
+      'It swims by flapping its fins, and rests on the seafloor with its arms and web spread out.',
+    ],
+    sources: [
+      sealifebase('Grimpoteuthis-umbellata'),
+      { label: 'SeaLifeBase (genus)', url: 'https://www.sealifebase.se/identification/SpeciesList.php?genus=Grimpoteuthis' },
+      { label: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Grimpoteuthis' },
+    ],
+  },
+};

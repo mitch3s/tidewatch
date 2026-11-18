@@ -22,8 +22,11 @@ export interface Codex {
   /** Rough outline(s) of the native range, as [lon, lat] polygons. */
   range: Array<Array<[number, number]>>;
   habitat: string;
-  /** Maximum recorded length. TL = total length, SL = standard length (without the tail fin). */
-  size: { cm: number; measure: 'TL' | 'SL' };
+  /**
+   * Maximum recorded size. TL = total length, SL = standard length (without the
+   * tail fin); WD = width of a jellyfish's bell, as SeaLifeBase gives it.
+   */
+  size: { cm: number; measure: 'TL' | 'SL' | 'WD' };
   diet: string;
   water: { type: 'salt' | 'fresh'; tempC?: [number, number] };
   funFacts: string[];
