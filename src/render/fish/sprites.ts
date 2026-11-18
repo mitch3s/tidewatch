@@ -14,16 +14,16 @@ const SIZE_FACTOR = 1.12;
  * baked into the cached frames so it costs nothing per frame.
  */
 export type DepthLevel = 0 | 1 | 2;
-const HAZE_ALPHA: Record<DepthLevel, number> = { 0: 0, 1: 0.16, 2: 0.34 };
-const BLUR_PX: Record<DepthLevel, number> = { 0: 0, 1: 0, 2: 1.1 };
+const HAZE_ALPHA: Record<DepthLevel, number> = { 0: 0, 1: 0.28, 2: 0.52 };
+const BLUR_PX: Record<DepthLevel, number> = { 0: 0, 1: 0.7, 2: 1.8 };
 
-/** The depth level for a fish's depth value z (0.75 far .. 1.1 near). */
+/** The depth level for a fish's depth value z (0.7 far .. 1.1 near). */
 export function depthLevel(z: number): DepthLevel {
-  return z < 0.86 ? 2 : z < 0.97 ? 1 : 0;
+  return z < 0.83 ? 2 : z < 0.96 ? 1 : 0;
 }
 
 /** How see-through to draw an uncached (turning) fish to roughly match its level. */
-export const VECTOR_FADE: Record<DepthLevel, number> = { 0: 1, 1: 0.9, 2: 0.75 };
+export const VECTOR_FADE: Record<DepthLevel, number> = { 0: 1, 1: 0.82, 2: 0.6 };
 
 interface SpriteSet {
   look: FishLook;

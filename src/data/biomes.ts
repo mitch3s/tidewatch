@@ -29,9 +29,9 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
     haze: '#0d6f94',
     farRows: ['#1d5a74', '#174b63'],
     plants: ['#2f7a4a', '#3f8f5a', '#4f9f63', '#2a6b45', '#5aa66b'],
-    floor: { y: 905, top: '#e8d8ae', bottom: '#b49f74' },
+    floor: { y: 905, top: '#d4c294', bottom: '#9c875e' },
     rays: '200,245,255',
-    caustics: { rgb: '215,248,255', strength: 0.3 },
+    caustics: { rgb: '215,248,255', strength: 1.1 },
     seed: 7,
   },
   amazon: {
@@ -45,7 +45,7 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
     floor: { y: 915, top: '#9b7b4f', bottom: '#5e4628' },
     rays: '255,240,190',
     // Tea-coloured, murky water: faint and warm.
-    caustics: { rgb: '255,228,170', strength: 0.16 },
+    caustics: { rgb: '255,228,170', strength: 0.5 },
     seed: 11,
   },
 };

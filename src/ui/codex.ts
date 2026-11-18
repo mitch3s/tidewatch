@@ -1,4 +1,5 @@
 import { BIOMES } from '../data/biomes';
+import { APP_COMMIT, APP_VERSION } from '../version';
 import { DEV_TOOLS } from '../dev/enabled';
 import { ALL_SPECIES, getSpecies } from '../data/species';
 import { BIOME_ORDER, BIOME_RULES } from '../data/progression';
@@ -286,6 +287,7 @@ export class CodexScreen {
       ${DEV_TOOLS && this.host.openGodMode ? `<div class="tw-setting" data-focus data-setting="god"><span>Open god mode</span><b>Development build</b></div>` : ''}
       ${this.host.canExit ? `<div class="tw-setting${this.confirmExit !== null ? ' tw-armed' : ''}" data-focus data-setting="exit"><span>Exit Tidewatch</span><b>${exit}</b></div>` : ''}
       <p class="tw-about">Fish facts come from FishBase and the other sources listed in each codex entry. Map data: Natural Earth.</p>
+      <p class="tw-about tw-build">Tidewatch ${APP_VERSION} · build ${APP_COMMIT}</p>
     </div>`;
   }
 

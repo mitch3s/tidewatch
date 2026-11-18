@@ -159,7 +159,7 @@ export function renderFish(
     // shadow under the belly tinted by the water rather than black.
     const shade = ctx.createLinearGradient(0, -shape.upper, 0, shape.lower);
     shade.addColorStop(0, 'rgba(255,255,255,0.10)');
-    shade.addColorStop(0.16, 'rgba(255,255,255,0.30)');
+    shade.addColorStop(0.16, 'rgba(255,255,255,0.36)');
     shade.addColorStop(0.36, 'rgba(255,255,255,0.04)');
     shade.addColorStop(0.55, 'rgba(255,255,255,0)');
     shade.addColorStop(0.62, 'rgba(4,22,44,0)');

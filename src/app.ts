@@ -1,4 +1,5 @@
 import { BIOMES } from './data/biomes';
+import { APP_VERSION } from './version';
 import { ALL_SPECIES, getSpecies } from './data/species';
 import { BIOME_ORDER } from './data/progression';
 import type { BiomeId, Species } from './data/types';
@@ -413,7 +414,7 @@ export class App implements GodHost {
 
   private updateBrand(): void {
     const multi = this.game.state.unlockedBiomes.length > 1;
-    this.brand.innerHTML = `<h1>Tidewatch</h1><p>${escapeHtml(BIOMES[this.current].name)}${multi ? ' · ◀ ▶ switch tank' : ''}</p>`;
+    this.brand.innerHTML = `<h1>Tidewatch <span class="tw-version">v${APP_VERSION}</span></h1><p>${escapeHtml(BIOMES[this.current].name)}${multi ? ' · ◀ ▶ switch tank' : ''}</p>`;
   }
 
   keepAwakeStatus(): string {

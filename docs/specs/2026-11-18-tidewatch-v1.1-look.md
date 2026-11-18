@@ -1,7 +1,7 @@
 # Tidewatch v1.1: the look pass
 
 **Date:** 2026-11-18
-**Status:** Approved (direction "premium illustrated", option A from the v1 review)
+**Status:** Approved (direction "premium illustrated", option A from the v1 review). After the first review the effects were too subtle, so the sand light, haze and blur were strengthened.
 **Builds on:** [`2026-11-17-tidewatch-design.md`](2026-11-17-tidewatch-design.md)
 
 ## 1. Why
@@ -19,13 +19,13 @@ This comes before any new species or biomes, so new content is tuned once, in th
 - Same renderer everywhere (tank, codex, fish lab), so the codex gets the new look too. The @visual reference images are updated.
 
 ### 2.2 Depth
-- Tank fish get a wider depth range (z 0.75–1.1 instead of 0.85–1.1).
+- Tank fish get a wider depth range (z 0.7–1.1 instead of 0.85–1.1).
 - Fish are drawn in three depth levels. Far fish are tinted towards the biome's haze colour and slightly blurred; the middle level is lightly tinted; near fish are untouched.
 - The tint and blur are baked into the cached sprites when they are first drawn (a few extra sprite sets per species), so they cost nothing per frame. `ctx.filter` is never used per frame.
 - Fish near the floor cast a soft shadow on the sand.
 
 ### 2.3 Water
-- **Caustics:** an animated, tileable network of light on the sand (pre-computed once, 12 looping frames, cross-faded). Daylight only; weaker and warmer in the murky Amazon.
+- **Caustics:** an animated, tileable network of light on the sand (pre-computed once, 12 looping frames, cross-faded). Strong by day, faint by moonlight; weaker and warmer in the murky Amazon. The reef sand is a little darker than in v1 so the light shows up.
 - **Surface shimmer:** faint moving bright bands at the top of the screen, the underside of the surface.
 - **Two layers of particles:** the existing fine specks stay in the middle distance; a few large, soft, out-of-focus motes drift in front of everything.
 
@@ -33,6 +33,9 @@ This comes before any new species or biomes, so new content is tuned once, in th
 - Night uses a **multiply** colour grade (darker and bluer, keeping contrast) instead of a flat translucent overlay that washed colours out to grey.
 - **Moonlight:** faint silver light rays at night instead of none.
 - **Dawn and dusk:** a warm colour grade plus a warm glow from the surface.
+
+### 2.5 Version in the app
+- The version (from `package.json`, now 1.1.0) is shown next to the title, and the codex's Settings tab shows the version and the git commit of the build (`+` if it had uncommitted changes), so you can tell which build is installed on the TV.
 
 ## 3. Performance budget
 

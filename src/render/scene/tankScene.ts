@@ -180,7 +180,8 @@ export class TankScene {
     withCamera(PARALLAX.rays, () => this.rays.draw(ctx, time, rayRgb, rayStrength));
     withCamera(PARALLAX.mid, () => {
       this.mid.draw(ctx);
-      this.caustics.draw(ctx, time, light.rays);
+      // Moonlight throws a faint net too.
+      this.caustics.draw(ctx, time, light.rays + 0.5 * light.moon);
       this.particles.draw(ctx);
       this.scenery.drawLive?.(ctx, time);
     });

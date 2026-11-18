@@ -5,7 +5,7 @@ import { createRng } from '../../util/rng';
 const TILE = 192;
 const FRAMES = 12;
 /** Seconds for one full loop of the animation. */
-const LOOP_S = 9;
+const LOOP_S = 5;
 /** Number of light cells in a tile. */
 const CELLS = 11;
 
@@ -54,8 +54,8 @@ function computeShapes(): Uint8ClampedArray[] {
     y: rng() * TILE,
     // Each point circles with a whole number of turns per loop, so frame
     // FRAMES equals frame 0.
-    rx: 6 + rng() * 10,
-    ry: 6 + rng() * 10,
+    rx: 10 + rng() * 12,
+    ry: 10 + rng() * 12,
     turns: rng() < 0.5 ? 1 : -1,
     phase: rng() * TAU,
   }));
@@ -89,14 +89,14 @@ function computeShapes(): Uint8ClampedArray[] {
         }
         // Distance to the nearest cell edge, roughly.
         const edge = Math.sqrt(d2) - Math.sqrt(d1);
-        const line = clamp(1 - edge / 3.6, 0, 1);
+        const line = clamp(1 - edge / 5, 0, 1);
         // Large, slowly shifting patches of brighter and dimmer light, so the
         // net doesn't look like a regular mesh (whole waves per tile: tileable).
         const patch =
           0.5 +
           0.3 * Math.sin((TAU * x) / TILE + (TAU * 2 * y) / TILE + t) +
           0.2 * Math.sin((TAU * 3 * x) / TILE - (TAU * y) / TILE - t);
-        const v = line * clamp(patch, 0.08, 1);
+        const v = line * clamp(patch, 0.25, 1);
         shape[y * TILE + x] = Math.round(255 * v * v);
       }
     }
@@ -108,7 +108,7 @@ function computeShapes(): Uint8ClampedArray[] {
 export interface CausticsStyle {
   /** Light colour as "r,g,b". */
   rgb: string;
-  /** Overall strength at full daylight, 0..1. */
+  /** Overall strength at full daylight; above 1 draws the net more than once. */
   strength: number;
 }
 
@@ -143,7 +143,7 @@ export class Caustics {
     ];
     const SX = 2.1;
     const SY = 0.75;
-    const drift = (time * 6) % (TILE * SX);
+    const drift = (time * 12) % (TILE * SX);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.translate(drift, top);
@@ -157,9 +157,14 @@ export class Caustics {
       const p = this.patterns[k];
       if (!p || fw <= 0.01) continue;
       ctx.fillStyle = p;
-      for (const [y0, y1, fade] of bands) {
-        ctx.globalAlpha = a * fw * fade;
-        ctx.fillRect(x0, (y0 - top) / SY, w, (y1 - y0) / SY);
+      // Additive light can't exceed alpha 1 per fill, so strong settings
+      // stack a second fill.
+      const passes = Math.ceil(a);
+      for (let pass = 0; pass < passes; pass++) {
+        for (const [y0, y1, fade] of bands) {
+          ctx.globalAlpha = (a / passes) * fw * fade;
+          ctx.fillRect(x0, (y0 - top) / SY, w, (y1 - y0) / SY);
+        }
       }
     }
     ctx.restore();

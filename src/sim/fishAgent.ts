@@ -25,7 +25,7 @@ export interface School {
  */
 export class FishAgent {
   readonly length: number;
-  /** Depth: 0.75 (far) .. 1.1 (near). Scales size and sets draw order. */
+  /** Depth: 0.7 (far) .. 1.1 (near). Scales size and sets draw order. */
   readonly z: number;
   pos: Vec;
   vel: Vec;
@@ -55,7 +55,7 @@ export class FishAgent {
     /** Start somewhere specific (e.g. swimming in from off-screen) instead of at random. */
     spawn?: { x: number; y: number; facing: 1 | -1 },
   ) {
-    this.z = lerp(0.75, 1.1, rng());
+    this.z = lerp(0.7, 1.1, rng());
     this.length = species.displayLength * this.z;
     const [lo, hi] = species.look.swim.speed;
     this.cruise = lerp(lo, hi, rng()) * this.length;
