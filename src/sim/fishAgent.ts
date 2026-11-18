@@ -10,6 +10,8 @@ export interface TankMood {
   food: readonly Flake[];
   /** 1 = daytime activity, lower = resting at night (spec v1.2 §3). */
   activity: number;
+  /** How far into the night it is, 0..1, for species that migrate up at night. */
+  night?: number;
 }
 
 const CALM: TankMood = { food: [], activity: 1 };
@@ -60,6 +62,8 @@ export class FishAgent {
   private cur: FishPose;
   /** How much it's resting for the night, 0..1. */
   private rest = 0;
+  /** How far into the night it is (for migrating species), 0..1. */
+  private night = 0;
   /** The flake it's going for, if any. */
   private meal: Flake | null = null;
 
@@ -121,6 +125,7 @@ export class FishAgent {
     this.burst = Math.max(0, this.burst - dt);
     // Food in the water wakes everyone up.
     this.rest = mood.food.length > 0 ? 0 : 1 - mood.activity;
+    this.night = mood.night ?? 0;
 
     // ---- food: eat what's in reach, then go for the nearest flake
     if (this.meal && this.meal.eaten) this.meal = null;
@@ -153,7 +158,7 @@ export class FishAgent {
       if (this.pause > 0) {
         this.pause -= dt;
       } else if (arrived || this.retarget <= 0) {
-        const pauseChance = this.behaviour === 'bottom-dweller' ? 0.55 : this.behaviour === 'hover' ? 0.35 : 0.05;
+        const pauseChance = this.behaviour === 'bottom-dweller' ? 0.55 : this.behaviour === 'hover' || this.behaviour === 'drift' ? 0.35 : 0.05;
         // Resting fish stop more often, and for longer.
         if (arrived && rng() < lerp(pauseChance, Math.max(pauseChance, 0.6), this.rest)) {
           this.pause = lerp(1.5, this.behaviour === 'bottom-dweller' ? 6 : 4, rng()) * (1 + 1.5 * this.rest);
@@ -297,6 +302,11 @@ export class FishAgent {
   private depthBand(b: Bounds): [number, number] {
     let [d0, d1] = this.species.look.swim.depth;
     const b2 = this.behaviour;
+    // Diel vertical migration: up toward the surface at night.
+    if (this.species.look.swim.migrates && this.night > 0) {
+      d0 = lerp(d0, 0.05, this.night);
+      d1 = lerp(d1, 0.4, this.night);
+    }
     if (this.rest > 0 && b2 !== 'bottom-dweller' && b2 !== 'hover') {
       const sink = this.rest * 0.6;
       d0 = lerp(d0, (d0 + d1) / 2, sink);
@@ -348,6 +358,9 @@ export class FishAgent {
       case 'hover':
         if (env.home) return { x: env.home.x + lerp(-230, 230, rng()), y: env.home.y + lerp(-110, 30, rng()) };
         return { x: this.pos.x + lerp(-250, 250, rng()), y };
+      case 'drift':
+        // Short, lazy wanders in any direction.
+        return { x: clamp(this.pos.x + lerp(-320, 320, rng()), b.left + 80, b.right - 80), y };
       case 'bottom-dweller':
         return { x: clamp(this.pos.x + lerp(-350, 350, rng()), b.left + 50, b.right - 50), y: lerp(bottom - 20, bottom, rng()) };
       default: {

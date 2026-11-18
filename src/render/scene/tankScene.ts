@@ -3,12 +3,14 @@ import type { Species } from '../../data/types';
 import { CATCH_WINDOW_MS } from '../../game/game';
 import { Tank } from '../../sim/tank';
 import { VisitorSwimmer } from '../../sim/visitor';
-import { renderFish } from '../fish/renderFish';
+import type { FishLook } from '../fish/look';
+import { type FishPose, glowPoints, renderFish } from '../fish/renderFish';
 import { depthLevel, FishSprites, HAZE_ALPHA } from '../fish/sprites';
 import { FloorShadows, NearMotes, SurfaceShimmer } from './atmosphere';
 import { Caustics } from './caustics';
 import { STAGE_HEIGHT, STAGE_WIDTH } from '../stage';
 import { createAmazonScenery } from './amazon';
+import { createDeepScenery } from './deep';
 import { Bubbles } from './bubbles';
 import { Camera, CLOSEUP_ZOOM } from './camera';
 import { Closeups } from './closeups';
@@ -53,7 +55,14 @@ export interface TankSceneOptions {
 }
 
 function sceneryFor(biome: BiomeDef): Scenery {
-  return biome.id === 'reef' ? createReefScenery(biome) : createAmazonScenery(biome);
+  switch (biome.id) {
+    case 'reef':
+      return createReefScenery(biome);
+    case 'amazon':
+      return createAmazonScenery(biome);
+    case 'deep':
+      return createDeepScenery(biome);
+  }
 }
 
 /** One complete aquarium: scenery, lighting, fish and effects (spec 5.1). */
@@ -96,8 +105,9 @@ export class TankScene {
     this.rays = new LightRays(biome.seed + 1);
     this.bubbles = new Bubbles(this.scenery.bubbleSources, biome.floor.y + 10, biome.seed + 2, 70, opts.onBubble);
     this.grass = new SeaGrass(biome.seed + 3, this.scenery.grass, biome.plants);
-    const moteRgb = biome.id === 'reef' ? '225,245,255' : '200,180,130';
-    this.particles = new Particles(biome.seed + 6, 70, moteRgb);
+    const moteRgb = biome.id === 'amazon' ? '200,180,130' : biome.id === 'deep' ? '185,205,225' : '225,245,255';
+    // The deep sea is full of falling marine snow.
+    this.particles = new Particles(biome.seed + 6, biome.lightless ? 150 : 70, moteRgb);
     this.caustics = new Caustics(biome.floor.y, biome.caustics);
     this.shadows = new FloorShadows(biome.floor.y);
     this.motes = new NearMotes(biome.seed + 7, moteRgb);
@@ -184,7 +194,10 @@ export class TankScene {
   update(dt: number): void {
     this.time += dt;
     // Fish rest at night (spec v1.2 §3).
-    this.tank.activity = this.dayNight() ? lerp(0.35, 1, lightingAt(this.hour()).rays) : 1;
+    const day = lightingAt(this.hour());
+    // No sun in the deep sea: nobody rests, but migrating species still rise at night.
+    this.tank.activity = this.dayNight() && !this.biome.lightless ? lerp(0.35, 1, day.rays) : 1;
+    this.tank.night = this.dayNight() ? day.moon : 0;
     this.tank.update(dt);
     this.closeups.update(dt, this.tank.agents, this.camera, this.closeupsAllowed && this.closeupsOn() && !this.visitor);
     this.bubbles.update(dt);
@@ -199,7 +212,9 @@ export class TankScene {
 
   render(ctx: CanvasRenderingContext2D, alpha: number, time: number): void {
     this.camera.update(time);
-    const light = lightingAt(this.dayNight() ? this.hour() : 12);
+    const sun = lightingAt(this.dayNight() ? this.hour() : 12);
+    // The deep sea looks the same day and night.
+    const light = this.biome.lightless ? { ...sun, rays: 0, moon: 0, warmth: 0, grade: [255, 255, 255] as [number, number, number] } : sun;
     const withCamera = (parallax: number, draw: () => void) => {
       ctx.save();
       this.camera.apply(ctx, parallax);
@@ -212,7 +227,7 @@ export class TankScene {
     const rayStrength = light.rays + MOONLIGHT * light.moon;
 
     withCamera(PARALLAX.far, () => this.far.draw(ctx));
-    withCamera(PARALLAX.rays, () => this.rays.draw(ctx, time, rayRgb, rayStrength));
+    if (!this.biome.lightless) withCamera(PARALLAX.rays, () => this.rays.draw(ctx, time, rayRgb, rayStrength));
     withCamera(PARALLAX.mid, () => {
       this.mid.draw(ctx);
       // Moonlight throws a faint net too.
@@ -224,7 +239,7 @@ export class TankScene {
       const agents = this.tank.agents;
       this.drawFood(ctx);
       const poses = agents.map((a) => a.poseAt(alpha));
-      this.shadows.draw(ctx, poses, 0.35 + 0.65 * light.rays);
+      if (!this.biome.lightless) this.shadows.draw(ctx, poses, 0.35 + 0.65 * light.rays);
       const vectors = this.debug?.noSprites === true;
       for (let i = 0; i < agents.length; i++) {
         const agent = agents[i]!;
@@ -242,6 +257,7 @@ export class TankScene {
           }
         }
       }
+      this.drawGlows(ctx, agents.map((a) => a.species.look), poses, time);
       if (this.visitor) this.drawVisitor(ctx, alpha, time);
       this.sparkles.draw(ctx);
       if (this.debug) this.drawDebug(ctx, alpha);
@@ -251,7 +267,7 @@ export class TankScene {
       this.grass.draw(ctx, time);
       this.motes.draw(ctx, 0.45 + 0.55 * light.rays);
     });
-    this.shimmer.draw(ctx, time, rayRgb, rayStrength);
+    if (!this.biome.lightless) this.shimmer.draw(ctx, time, rayRgb, rayStrength);
 
     // Screen-space grading: a multiply colour grade keeps contrast (night is
     // darker and bluer, dawn and dusk warmer) where a translucent overlay
@@ -334,6 +350,50 @@ export class TankScene {
     ctx.restore();
   }
 
+  /**
+   * Bioluminescence: a soft halo around every light an animal carries,
+   * drawn live (additively) so it glows over the dark water and pulses gently.
+   */
+  private drawGlows(ctx: CanvasRenderingContext2D, looks: readonly FishLook[], poses: readonly FishPose[], time: number): void {
+    let any = false;
+    for (let i = 0; i < looks.length; i++) {
+      const look = looks[i]!;
+      if (!look.glow && !look.lure) continue;
+      if (!any) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        any = true;
+      }
+      const pulse = 0.65 + 0.35 * Math.sin(time * 1.4 + i * 1.9);
+      for (const g of glowPoints(look, poses[i]!)) {
+        // A chasing display: a bright pulse runs round the spots in turn.
+        ctx.globalAlpha = g.chase === undefined ? pulse : 0.12 + 0.88 * Math.max(0, Math.sin(time * 2.2 + i - g.chase * TAU)) ** 6;
+        ctx.drawImage(this.haloSprite(g.rgb), g.x - g.r, g.y - g.r, g.r * 2, g.r * 2);
+      }
+    }
+    if (any) ctx.restore();
+  }
+
+  private readonly halos = new Map<string, HTMLCanvasElement>();
+  /** A soft round glow in one colour, pre-rendered once. */
+  private haloSprite(rgb: string): HTMLCanvasElement {
+    let c = this.halos.get(rgb);
+    if (c) return c;
+    c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const x = c.getContext('2d');
+    if (x) {
+      const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+      g.addColorStop(0, `rgba(${rgb},0.9)`);
+      g.addColorStop(0.25, `rgba(${rgb},0.45)`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      x.fillStyle = g;
+      x.fillRect(0, 0, 64, 64);
+    }
+    this.halos.set(rgb, c);
+    return c;
+  }
+
   /** Food flakes: small tumbling chips, fading out once they've lain on the floor a while. */
   private drawFood(ctx: CanvasRenderingContext2D): void {
     const flakes = this.tank.food.flakes;
@@ -370,5 +430,6 @@ export class TankScene {
     ctx.fill();
     ctx.restore();
     renderFish(ctx, v.species.look, pose);
+    this.drawGlows(ctx, [v.species.look], [pose], time);
   }
 }

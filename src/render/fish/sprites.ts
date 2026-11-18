@@ -67,8 +67,16 @@ export class FishSprites {
     const s = pose.length / set.refLength;
     ctx.save();
     ctx.translate(pose.x, pose.y);
-    ctx.rotate(pose.facing < 0 ? -pose.pitch : pose.pitch);
-    ctx.scale(s * pose.facing, s);
+    // Match how renderCreature tilts and mirrors (jellies never mirror).
+    const form = species.look.creature;
+    if (form?.kind === 'jelly') {
+      ctx.rotate(pose.pitch * 0.3);
+      ctx.scale(s, s);
+    } else {
+      const pitch = form ? pose.pitch * 0.5 : pose.pitch;
+      ctx.rotate(pose.facing < 0 ? -pitch : pitch);
+      ctx.scale(s * pose.facing, s);
+    }
     ctx.drawImage(frame, -set.cx / ps, -set.cy / ps, set.w / ps, set.h / ps);
     ctx.restore();
     return true;

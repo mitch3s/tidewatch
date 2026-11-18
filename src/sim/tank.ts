@@ -13,6 +13,8 @@ export class Tank {
   readonly food: Food;
   /** 1 = daytime, lower = resting at night. Set by the scene from the lighting. */
   activity = 1;
+  /** 0 (day) .. 1 (night), for species that migrate up at night. */
+  night = 0;
   private readonly rng: () => number;
 
   constructor(
@@ -87,7 +89,7 @@ export class Tank {
 
   update(dt: number): void {
     this.food.update(dt);
-    const mood = { food: this.food.flakes, activity: this.activity };
+    const mood = { food: this.food.flakes, activity: this.activity, night: this.night };
     for (const a of this.agents) a.update(dt, this.env, this.agents, mood);
   }
 

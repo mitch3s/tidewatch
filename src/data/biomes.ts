@@ -17,6 +17,11 @@ export interface BiomeDef {
   rays: string;
   /** Caustic light on the sand: colour as "r,g,b" and strength at full daylight. */
   caustics: { rgb: string; strength: number };
+  /**
+   * No sunlight reaches this tank (the deep sea): no light rays, caustics,
+   * surface shimmer or day/night colour grade. Animals make their own light.
+   */
+  lightless?: boolean;
   /** Seed for the generated scenery, so the tank looks the same every time. */
   seed: number;
 }
@@ -47,5 +52,18 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
     // Tea-coloured, murky water: faint and warm.
     caustics: { rgb: '255,228,170', strength: 0.35 },
     seed: 11,
+  },
+  deep: {
+    id: 'deep',
+    name: 'Deep sea',
+    water: ['#061426', '#030a16', '#01040a'],
+    haze: '#04101e',
+    farRows: ['#07162a', '#050f1e'],
+    plants: [],
+    floor: { y: 920, top: '#1c2430', bottom: '#0b0f15' },
+    rays: '120,170,255',
+    caustics: { rgb: '0,0,0', strength: 0 },
+    lightless: true,
+    seed: 23,
   },
 };
