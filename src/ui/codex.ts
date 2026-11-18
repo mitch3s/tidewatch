@@ -1,4 +1,5 @@
 import { BIOMES } from '../data/biomes';
+import { DEV_TOOLS } from '../dev/enabled';
 import { ALL_SPECIES, getSpecies } from '../data/species';
 import { BIOME_ORDER, BIOME_RULES } from '../data/progression';
 import type { BiomeId, Species } from '../data/types';
@@ -21,6 +22,11 @@ export interface CodexHost {
   readonly canExit: boolean;
   /** Called when the codex closes itself (Back from the grid). */
   onClose(): void;
+  /**
+   * Development builds only: open god mode. Shown as a settings row, for TV
+   * remotes without the colour buttons (e.g. LG's Magic Remote).
+   */
+  openGodMode?: () => void;
 }
 
 type Page = { kind: 'grid'; tab: BiomeId | 'settings' } | { kind: 'entry'; id: string };
@@ -151,6 +157,9 @@ export class CodexScreen {
           this.refreshSettings();
         }
         return;
+      case 'god':
+        this.host.openGodMode?.();
+        return;
       case 'exit':
         if (this.confirmExit !== null) this.host.exitApp();
         else {
@@ -274,6 +283,7 @@ export class CodexScreen {
       <div class="tw-setting" data-focus data-setting="rotation"><span>Switch tanks automatically</span><b>‹ ${rot} ›</b></div>
       <div class="tw-setting" data-focus data-setting="daynight"><span>Day and night lighting</span><b>‹ ${s.dayNight ? 'On' : 'Off'} ›</b></div>
       <div class="tw-setting tw-danger${this.confirmReset !== null ? ' tw-armed' : ''}" data-focus data-setting="reset"><span>Reset progress</span><b>${reset}</b></div>
+      ${DEV_TOOLS && this.host.openGodMode ? `<div class="tw-setting" data-focus data-setting="god"><span>Open god mode</span><b>Development build</b></div>` : ''}
       ${this.host.canExit ? `<div class="tw-setting${this.confirmExit !== null ? ' tw-armed' : ''}" data-focus data-setting="exit"><span>Exit Tidewatch</span><b>${exit}</b></div>` : ''}
       <p class="tw-about">Fish facts come from FishBase and the other sources listed in each codex entry. Map data: Natural Earth.</p>
     </div>`;

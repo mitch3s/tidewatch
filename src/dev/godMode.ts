@@ -251,6 +251,7 @@ export class GodMode {
     rows.push({ kind: 'toggle', label: 'Movement vectors & targets', get: () => h.debugView.vectors, set: (v) => (h.debugView.vectors = v) });
     rows.push({ kind: 'toggle', label: 'Fish bounds', get: () => h.debugView.bounds, set: (v) => (h.debugView.bounds = v) });
     rows.push({ kind: 'toggle', label: 'School neighbours', get: () => h.debugView.neighbours, set: (v) => (h.debugView.neighbours = v) });
+    rows.push({ kind: 'toggle', label: 'Draw fish as vectors (no sprite cache)', get: () => h.debugView.noSprites === true, set: (v) => (h.debugView.noSprites = v) });
     rows.push({ kind: 'toggle', label: 'Keep UI visible (no idle fade)', get: () => h.idleDisabled, set: (v) => (h.idleDisabled = v) });
     rows.push({
       kind: 'choice',
@@ -274,6 +275,8 @@ export class GodMode {
       label: 'Frame rate',
       get: () => (h.stage.perf.averageMs ? `${Math.round(1000 / h.stage.perf.averageMs)} fps (${h.stage.perf.averageMs.toFixed(1)} ms)` : '-'),
     });
+    rows.push({ kind: 'info', label: 'Draw time per frame', get: () => `${h.stage.perf.workMs.toFixed(1)} ms` });
+    rows.push({ kind: 'info', label: 'Canvas', get: () => `${h.stage.canvas.width}×${h.stage.canvas.height} @ ${window.devicePixelRatio}x` });
     rows.push({ kind: 'slider', label: 'Extra fish to add', min: 10, max: 200, step: 10, get: () => this.extras, set: (v) => (this.extras = v) });
     rows.push({ kind: 'button', label: 'Add extra fish', run: () => h.scene().tank.addExtras(speciesIn(h.current), this.extras) });
     rows.push({ kind: 'button', label: 'Remove extra fish', run: () => h.rebuildScenes() });

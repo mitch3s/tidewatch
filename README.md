@@ -65,9 +65,9 @@ Flags can be combined, e.g. `/?reset&visitor=now&debug`. These work in every bui
 
 A developer panel for testing everything without waiting. It exists only in development builds; release builds don't contain it (packaging checks this).
 
-- **Open it:** press `G` on a PC, or Red, Green, Yellow, Blue on the remote within 2 seconds (keys 1, 2, 3, 4 on a PC). `?god` opens it at startup.
+- **Open it:** press `G` on a PC, or Red, Green, Yellow, Blue on the remote within 2 seconds (keys 1, 2, 3, 4 on a PC). `?god` opens it at startup. Remotes without colour buttons (like LG's Magic Remote): codex → Settings → **Open god mode**.
 - **Use it:** ↑↓ move, ←→ adjust, OK press, Back close. The mouse works too. Buttons in red ask you to press twice.
-- **What's in it:** summon any visitor, trigger arrivals, show any message; speed up, pause or set the time of day; lock and unlock tanks; set any species to unseen, sighted or collected; debug overlays (movement, bounds, school links, frame rate); a stress test with up to 200 extra fish; saved progress (presets, reset, export, import).
+- **What's in it:** summon any visitor, trigger arrivals, show any message; speed up, pause or set the time of day; lock and unlock tanks; set any species to unseen, sighted or collected; debug overlays (movement, bounds, school links); a performance readout (frame rate, draw time per frame, fish count, canvas size); a stress test with up to 200 extra fish; saved progress (presets, reset, export, import).
 - **Fish lab:** one species shown large with a real-size copy below. Every number and colour of its look can be adjusted live (the fish in the tank change too), then copied as JSON into `src/data/species/<id>.ts`.
 
 ## Scripts

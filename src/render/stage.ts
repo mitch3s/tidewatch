@@ -39,7 +39,15 @@ export class Stage {
   /** Drops rendering to 30 fps on slow devices. */
   readonly perf = new PerfGuard();
 
-  constructor(private readonly host: HTMLElement) {
+  /**
+   * @param maxPixelRatio highest device pixel ratio to render at. On the TV
+   *   this is 1: the app is laid out for 1920×1080 and webOS scales it to the
+   *   panel, so drawing a 4K canvas would cost four times as much for nothing.
+   */
+  constructor(
+    private readonly host: HTMLElement,
+    private readonly maxPixelRatio = 2,
+  ) {
     this.canvas = document.createElement('canvas');
     const ctx = this.canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('Canvas 2D is not supported');
@@ -58,8 +66,7 @@ export class Stage {
     const cssH = Math.round(STAGE_HEIGHT * this.cssScale);
     this.offsetX = (w - cssW) / 2;
     this.offsetY = (h - cssH) / 2;
-    // Cap the DPR: a 4K TV at DPR 2 would quadruple fill cost for little gain.
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.dpr = Math.min(window.devicePixelRatio || 1, this.maxPixelRatio);
     this.canvas.style.width = `${cssW}px`;
     this.canvas.style.height = `${cssH}px`;
     this.canvas.width = Math.round(cssW * this.dpr);
@@ -104,6 +111,7 @@ export class Stage {
       // At 30 fps, skip every other display frame entirely.
       if (this.perf.targetFps === 30 && frameNo++ % 2 === 1) return;
       this.perf.sample(now - last);
+      const workStart = performance.now();
       acc += Math.min((now - last) / 1000, SIM_STEP_S * MAX_STEPS_PER_FRAME);
       last = now;
       while (acc >= SIM_STEP_S) {
@@ -113,6 +121,7 @@ export class Stage {
       const s = this.cssScale * this.dpr;
       this.ctx.setTransform(s, 0, 0, s, 0, 0);
       cb.render(this.ctx, acc / SIM_STEP_S, (now - t0) / 1000);
+      this.perf.sampleWork(performance.now() - workStart);
     };
     this.rafId = requestAnimationFrame(frame);
   }

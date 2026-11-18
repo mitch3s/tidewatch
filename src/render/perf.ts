@@ -23,6 +23,22 @@ export class PerfGuard {
     return this.forced ?? this.auto;
   }
 
+  private workAvg = 0;
+
+  /**
+   * Rolling average of the time spent simulating and drawing each frame,
+   * in ms. Unlike the frame interval this shows the headroom left: at
+   * 60 fps the budget is 16.7 ms.
+   */
+  get workMs(): number {
+    return this.workAvg;
+  }
+
+  /** Record how long one frame's update and render took. */
+  sampleWork(ms: number): void {
+    this.workAvg = this.workAvg === 0 ? ms : this.workAvg * 0.95 + ms * 0.05;
+  }
+
   /** Rolling average frame time in ms (for the god-mode overlay). */
   get averageMs(): number {
     return this.window.length ? this.sum / this.window.length : 0;

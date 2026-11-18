@@ -11,7 +11,8 @@ import { TAU } from './util/math';
 const params = new URLSearchParams(location.search);
 const host = document.getElementById('stage');
 if (!host) throw new Error('#stage element missing');
-const stage = new Stage(host);
+const platform = createPlatform();
+const stage = new Stage(host, platform.name === 'webos' ? 1 : 2);
 
 const previewId = params.get('fish');
 if (previewId) {
@@ -43,7 +44,7 @@ if (previewId) {
   });
 } else {
   const hour = params.get('hour');
-  const app = new App(stage, createPlatform(), {
+  const app = new App(stage, platform, {
     store: defaultStore(),
     flags: DEV_TOOLS ? parseDevFlags(location.search) : null,
     // `?hour=21.5` overrides the clock, to preview day/night lighting.

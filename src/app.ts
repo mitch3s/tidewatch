@@ -276,6 +276,12 @@ export class App implements GodHost {
         exitApp: () => this.platform.exitApp(),
         canExit: this.platform.name === 'webos',
         onClose: () => this.closeCodex(),
+        openGodMode: this.god
+          ? () => {
+              this.closeCodex();
+              this.god?.open();
+            }
+          : undefined,
       },
       this.current,
       () => this.stage.pixelScale,
@@ -434,7 +440,10 @@ export class App implements GodHost {
       `next visitor  ${fmt(t.nextVisitorMs)}\n` +
       `timescale     ${this.clock.timescale}x\n` +
       `collected     ${collected}/${ALL_SPECIES.length}\n` +
-      `fps           ${this.stage.perf.averageMs ? Math.round(1000 / this.stage.perf.averageMs) : '-'} (target ${this.stage.perf.targetFps})`;
+      `fps           ${this.stage.perf.averageMs ? Math.round(1000 / this.stage.perf.averageMs) : '-'} (target ${this.stage.perf.targetFps})\n` +
+      `draw time     ${this.stage.perf.workMs.toFixed(1)} ms per frame\n` +
+      `fish          ${this.scene().tank.agents.length}\n` +
+      `canvas        ${this.stage.canvas.width}×${this.stage.canvas.height} (pixel ratio ${window.devicePixelRatio})`;
   }
 }
 

@@ -4,6 +4,7 @@ import { CATCH_WINDOW_MS } from '../../game/game';
 import { Tank } from '../../sim/tank';
 import { VisitorSwimmer } from '../../sim/visitor';
 import { renderFish } from '../fish/renderFish';
+import { FishSprites } from '../fish/sprites';
 import { STAGE_HEIGHT, STAGE_WIDTH } from '../stage';
 import { createAmazonScenery } from './amazon';
 import { Bubbles } from './bubbles';
@@ -26,6 +27,8 @@ export interface DebugView {
   vectors: boolean;
   bounds: boolean;
   neighbours: boolean;
+  /** Draw every fish as vectors instead of cached sprites (to compare). */
+  noSprites?: boolean;
 }
 
 export interface TankSceneOptions {
@@ -54,6 +57,8 @@ export class TankScene {
   private readonly grass: SeaGrass;
   private readonly sparkles = new Sparkles();
   private readonly particles: Particles;
+  private pixelScale = 1;
+  private readonly sprites = new FishSprites(() => this.pixelScale);
   private readonly hour: () => number;
   private readonly dayNight: () => boolean;
   private readonly debug: DebugView | undefined;
@@ -93,6 +98,8 @@ export class TankScene {
 
   /** Paint the static layers for the current backing-store scale. */
   prepare(pixelScale: number): void {
+    if (pixelScale !== this.pixelScale) this.sprites.clear();
+    this.pixelScale = pixelScale;
     this.far.prepare(pixelScale);
     this.mid.prepare(pixelScale);
   }
@@ -156,7 +163,11 @@ export class TankScene {
       this.scenery.drawLive?.(ctx, time);
     });
     withCamera(PARALLAX.fish, () => {
-      for (const agent of this.tank.agents) renderFish(ctx, agent.species.look, agent.poseAt(alpha));
+      const vectors = this.debug?.noSprites === true;
+      for (const agent of this.tank.agents) {
+        const pose = agent.poseAt(alpha);
+        if (vectors || !this.sprites.draw(ctx, agent.species, pose)) renderFish(ctx, agent.species.look, pose);
+      }
       if (this.visitor) this.drawVisitor(ctx, alpha, time);
       this.sparkles.draw(ctx);
       if (this.debug) this.drawDebug(ctx, alpha);
