@@ -18,7 +18,8 @@ import { SeaGrass } from './plants';
 import { createReefScenery, type Scenery } from './reef';
 import { Particles } from './particles';
 import { Sparkles } from './sparkles';
-import { TAU } from '../../util/math';
+import { lerp, TAU } from '../../util/math';
+import { FLAKE_COLORS, FLAKE_REST_S } from '../../sim/food';
 import { createRng } from '../../util/rng';
 
 /** Parallax per layer: 0 = fixed to the screen, 1 = moves with the fish. */
@@ -149,8 +150,17 @@ export class TankScene {
     return Math.hypot(w.x - p.x, w.y - p.y) < Math.max(80, this.visitor.length * 0.7);
   }
 
+  /** Sprinkle food at a screen x (stage coordinates). Returns false while on cooldown. */
+  feed(screenX: number): boolean {
+    const x = this.camera.toWorld(screenX, 0, PARALLAX.fish).x;
+    const b = this.tank.env.bounds;
+    return this.tank.feed(Math.min(b.right - 150, Math.max(b.left + 150, x)));
+  }
+
   update(dt: number): void {
     this.time += dt;
+    // Fish rest at night (spec v1.2 §3).
+    this.tank.activity = this.dayNight() ? lerp(0.35, 1, lightingAt(this.hour()).rays) : 1;
     this.tank.update(dt);
     this.bubbles.update(dt);
     this.particles.update(dt);
@@ -187,6 +197,7 @@ export class TankScene {
     });
     withCamera(PARALLAX.fish, () => {
       const agents = this.tank.agents;
+      this.drawFood(ctx);
       const poses = agents.map((a) => a.poseAt(alpha));
       this.shadows.draw(ctx, poses, 0.35 + 0.65 * light.rays);
       const vectors = this.debug?.noSprites === true;
@@ -290,6 +301,24 @@ export class TankScene {
       }
     }
     ctx.restore();
+  }
+
+  /** Food flakes: small tumbling chips, fading out once they've lain on the floor a while. */
+  private drawFood(ctx: CanvasRenderingContext2D): void {
+    const flakes = this.tank.food.flakes;
+    if (flakes.length === 0) return;
+    for (const f of flakes) {
+      const fade = f.landed ? Math.min(1, (FLAKE_REST_S - f.rest) / 4) : 1;
+      ctx.globalAlpha = 0.95 * fade;
+      ctx.fillStyle = FLAKE_COLORS[f.color]!;
+      const s = f.size;
+      // Tumbling: the flake's apparent width changes as it turns over.
+      const w = s * (f.landed ? 1 : 0.35 + 0.65 * Math.abs(Math.cos(f.phase * 1.3)));
+      ctx.beginPath();
+      ctx.ellipse(f.x, f.y, w, s * 0.7, f.phase * 0.4, 0, TAU);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   }
 
   /** The visitor, with a soft pulsing glow so it stands out even at night. */

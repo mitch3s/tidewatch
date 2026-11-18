@@ -109,7 +109,9 @@ export class App implements GodHost {
     pointer.on((e) => {
       this.idle.poke(performance.now());
       this.lastInputAt = performance.now();
-      if (e.kind === 'down' && !e.overUi && this.scene().hitsVisitor(e.x, e.y)) this.tryCatch();
+      if (e.kind !== 'down' || e.overUi || this.codex || this.god?.isOpen) return;
+      if (this.scene().hitsVisitor(e.x, e.y)) this.tryCatch();
+      else this.scene().feed(e.x);
     });
 
     platform.onVisibilityChange((visible) => {
@@ -315,7 +317,7 @@ export class App implements GodHost {
     if (decision === 'swallow') return;
     switch (action) {
       case 'select':
-        this.tryCatch();
+        if (!this.tryCatch()) this.feed();
         break;
       case 'left':
         this.switchTank(-1);
@@ -332,9 +334,17 @@ export class App implements GodHost {
     }
   }
 
-  private tryCatch(): void {
+  /** Catch the rare visitor in this tank, if there is one. */
+  private tryCatch(): boolean {
     const v = this.game.activeVisitor;
-    if (v && v.biome === this.current) this.game.catchVisitor();
+    if (!v || v.biome !== this.current) return false;
+    this.game.catchVisitor();
+    return true;
+  }
+
+  /** Sprinkle food somewhere in the middle part of the tank (spec v1.2 §2). */
+  private feed(): void {
+    this.scene().feed(480 + Math.random() * 960);
   }
 
   // ---------------------------------------------------------------- game events
@@ -414,7 +424,7 @@ export class App implements GodHost {
 
   private updateBrand(): void {
     const multi = this.game.state.unlockedBiomes.length > 1;
-    this.brand.innerHTML = `<h1>Tidewatch <span class="tw-version">v${APP_VERSION}</span></h1><p>${escapeHtml(BIOMES[this.current].name)}${multi ? ' · ◀ ▶ switch tank' : ''}</p>`;
+    this.brand.innerHTML = `<h1>Tidewatch <span class="tw-version">v${APP_VERSION}</span></h1><p>${escapeHtml(BIOMES[this.current].name)}${multi ? ' · ◀ ▶ switch tank' : ''} · OK feed</p>`;
   }
 
   keepAwakeStatus(): string {

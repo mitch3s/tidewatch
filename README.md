@@ -4,6 +4,7 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 
 - Design: [`docs/specs/2026-11-17-tidewatch-design.md`](docs/specs/2026-11-17-tidewatch-design.md)
 - Plan: [`docs/plans/2026-11-17-tidewatch-plan.md`](docs/plans/2026-11-17-tidewatch-plan.md)
+- v1.2 life (feeding, night rest, close-ups, sound): [`docs/specs/2026-11-18-tidewatch-v1.2-life.md`](docs/specs/2026-11-18-tidewatch-v1.2-life.md)
 - v1.1 look pass: [`docs/specs/2026-11-18-tidewatch-v1.1-look.md`](docs/specs/2026-11-18-tidewatch-v1.1-look.md)
 
 **Status:** Milestone 7 of 8. The whole app works with a remote: the aquarium, collecting, the codex and settings. Next is testing on a real TV (Milestone 8).
@@ -34,6 +35,7 @@ Open the URL Vite prints (usually http://localhost:5173) in Chrome. The app is d
 | Action | Remote | Keyboard |
 |---|---|---|
 | Catch a rare visitor | OK | Enter (or click it) |
+| Feed the fish (no visitor on screen; at most every 10 s) | OK, or point and click the water | Enter, or click the water |
 | Switch tank | ◀ ▶ | ← → |
 | Open the codex | ▲ or Back | ↑ or Escape |
 | In the codex: move / open / close | arrows / OK / Back | arrows / Enter / Escape |

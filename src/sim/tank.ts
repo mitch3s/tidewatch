@@ -1,6 +1,7 @@
 import type { Species } from '../data/types';
 import { createRng } from '../util/rng';
 import { FishAgent, type School, type TankEnv } from './fishAgent';
+import { Food } from './food';
 import { planPopulation } from './population';
 
 /** Maximum fish in one tank (spec 4.4); tuned on real TVs in Milestone 8. */
@@ -9,6 +10,9 @@ export const FISH_CAP = 40;
 /** All the fish in one tank. */
 export class Tank {
   agents: FishAgent[] = [];
+  readonly food: Food;
+  /** 1 = daytime, lower = resting at night. Set by the scene from the lighting. */
+  activity = 1;
   private readonly rng: () => number;
 
   constructor(
@@ -18,6 +22,8 @@ export class Tank {
     cap = FISH_CAP,
   ) {
     this.rng = createRng(seed);
+    // Flakes settle just above the sand, where bottom-dwellers feed.
+    this.food = new Food(env.bounds.bottom + 8, createRng(seed + 99));
     this.populate(species, cap);
   }
 
@@ -80,7 +86,14 @@ export class Tank {
   }
 
   update(dt: number): void {
-    for (const a of this.agents) a.update(dt, this.env, this.agents);
+    this.food.update(dt);
+    const mood = { food: this.food.flakes, activity: this.activity };
+    for (const a of this.agents) a.update(dt, this.env, this.agents, mood);
+  }
+
+  /** Sprinkle food around x (world). Returns false while on cooldown. */
+  feed(x: number): boolean {
+    return this.food.drop(x);
   }
 
   /** Far fish first, so near fish are drawn on top. */
