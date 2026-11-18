@@ -1,6 +1,6 @@
 {
   "name": "tidewatch",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "An ambient aquarium for LG webOS TVs where you collect real fish species.",
   "type": "module",

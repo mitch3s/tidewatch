@@ -4,7 +4,7 @@ import { CATCH_WINDOW_MS } from '../../game/game';
 import { Tank } from '../../sim/tank';
 import { VisitorSwimmer } from '../../sim/visitor';
 import { renderFish } from '../fish/renderFish';
-import { depthLevel, FishSprites, VECTOR_FADE } from '../fish/sprites';
+import { depthLevel, FishSprites, HAZE_ALPHA } from '../fish/sprites';
 import { FloorShadows, NearMotes, SurfaceShimmer } from './atmosphere';
 import { Caustics } from './caustics';
 import { STAGE_HEIGHT, STAGE_WIDTH } from '../stage';
@@ -231,9 +231,15 @@ export class TankScene {
         const pose = poses[i]!;
         const level = depthLevel(agent.z);
         if (vectors || !this.sprites.draw(ctx, agent.species, pose, level)) {
-          ctx.globalAlpha = VECTOR_FADE[level];
+          // Turning fish aren't cached: draw them directly, then lay the same
+          // haze over their shape as the cached frames have, so a distant
+          // fish looks the same while it turns (not see-through).
           renderFish(ctx, agent.species.look, pose);
-          ctx.globalAlpha = 1;
+          if (HAZE_ALPHA[level] > 0) {
+            ctx.globalAlpha = HAZE_ALPHA[level];
+            renderFish(ctx, agent.species.look, pose, { silhouette: this.biome.haze });
+            ctx.globalAlpha = 1;
+          }
         }
       }
       if (this.visitor) this.drawVisitor(ctx, alpha, time);
