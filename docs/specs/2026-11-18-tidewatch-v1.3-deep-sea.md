@@ -40,8 +40,6 @@ Every fact must be checked against a source, as for v1 (FishBase for fish; SeaLi
 - `/?tank=deep` (development builds): the deep tank with the whole roster. Add `&hour=23` to see the night migration, `&closeup=now` for a close-up.
 - `/?fish=<id>` (development builds) works for the pending animals too.
 
-The codex tests also need adjusting for the deep sea: temperatures below 15 °C, latitudes beyond 40°, and SeaLifeBase accepted instead of FishBase for animals that aren't fish.
-
 ## 6. Finishing (in a session that can reach the sources)
 
 Everything except the facts is wired and tested. To go live:
