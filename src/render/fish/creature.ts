@@ -139,135 +139,175 @@ function drawJelly(ctx: CanvasRenderingContext2D, form: JellyForm, pose: FishPos
 
 // ---------------------------------------------------------------- cephalopods
 
+/**
+ * Side view, heading toward +x: the mantle leans back, the arms meet at a
+ * crown below its front, and the web trails behind like a half-open
+ * umbrella. One fin on the near side; the far one just shows behind.
+ */
 function cephShape(form: CephalopodForm, phase: number) {
   const p = pulse(phase);
   const m = form.mantle;
   // Mantle on top, arms and web below; the whole animal is about 1 unit tall.
   const mantleCy = -0.5 + m.height / 2;
-  const base = mantleCy + m.height * 0.45;
-  const webLen = form.web.length * (1 - 0.22 * p);
-  const hemHalf = m.width * (0.55 + 0.5 * (1 - p));
-  return { p, mantleCy, base, webLen, hemHalf };
+  const mantleCx = -0.05;
+  const lean = -0.35;
+  const crown = { x: 0.04, y: mantleCy + m.height * 0.42 };
+  const webLen = form.web.length * (1 - 0.18 * p);
+  // The web closes when it pulses: the hem draws in toward the crown.
+  const front = crown.x + 0.1 + 0.08 * (1 - p);
+  const back = crown.x - (0.26 + 0.24 * (1 - p));
+  return { p, mantleCx, mantleCy, lean, crown, webLen, front, back };
 }
 
-/** Arm tip positions in body units (for glowing tips). */
-export function cephalopodArmTips(form: CephalopodForm, phase: number): Array<[number, number]> {
-  const { base, webLen, hemHalf } = cephShape(form, phase);
+/** Points along the web's hem, front to back, in body units. */
+function hemPoints(form: CephalopodForm, phase: number): Array<[number, number]> {
+  const { crown, webLen, front, back } = cephShape(form, phase);
   const n = form.web.arms;
   return Array.from({ length: n }, (_, i) => {
     const t = n > 1 ? i / (n - 1) : 0.5;
-    const x = (t - 0.5) * 2 * hemHalf * 1.08;
-    return [x, base + webLen * (1.08 + 0.1 * Math.sin(t * Math.PI))] as [number, number];
+    // The back of the web trails a little higher, swept by the water.
+    return [front + (back - front) * t, crown.y + webLen * (1 - 0.25 * t * t)] as [number, number];
   });
+}
+
+/** Arm tip positions in body units (for glowing tips): just past the hem. */
+export function cephalopodArmTips(form: CephalopodForm, phase: number): Array<[number, number]> {
+  const { crown } = cephShape(form, phase);
+  return hemPoints(form, phase).map(([x, y]) => [crown.x + (x - crown.x) * 1.1, crown.y + (y - crown.y) * 1.1] as [number, number]);
 }
 
 function drawCephalopod(ctx: CanvasRenderingContext2D, form: CephalopodForm, pose: FishPose, opts: RenderOptions, look: FishLook): void {
   const sil = opts.silhouette;
   const m = form.mantle;
-  const { mantleCy, base, webLen, hemHalf } = cephShape(form, pose.phase);
-  const n = form.web.arms;
+  const { mantleCx, mantleCy, lean, crown, webLen } = cephShape(form, pose.phase);
+  const ears = form.fins.ears === true;
+  const flap = Math.sin(pose.finPhase) * (ears ? 0.45 : 0.25);
+  const fs = form.fins.size;
 
-  // Fins on the mantle, flapping (big ear-like flaps on a dumbo octopus).
-  const flap = Math.sin(pose.finPhase) * (form.fins.ears ? 0.5 : 0.25);
-  ctx.fillStyle = sil ?? form.fins.color;
-  for (const side of [-1, 1]) {
+  // A fin (or ear) on the mantle, attached at (ax, ay) in the mantle's frame.
+  const fin = (ax: number, ay: number, angle: number, scale: number) => {
     ctx.save();
-    ctx.translate(side * m.width * 0.42, mantleCy - m.height * (form.fins.ears ? 0.05 : 0.25));
-    ctx.rotate(side * (0.5 + flap));
+    ctx.translate(mantleCx, mantleCy);
+    ctx.rotate(lean);
+    ctx.translate(ax, ay);
+    // `angle` points outward from the mantle; the fin grows out that way.
+    ctx.rotate(angle);
     ctx.beginPath();
-    const fs = form.fins.size;
-    ctx.ellipse(side * fs * 0.5, 0, fs * 0.55, fs * (form.fins.ears ? 0.4 : 0.22), 0, 0, TAU);
-    ctx.globalAlpha = sil ? 1 : 0.92;
+    ctx.ellipse(fs * 0.45 * scale, 0, fs * 0.55 * scale, fs * (ears ? 0.38 : 0.22) * scale, 0, 0, TAU);
     ctx.fill();
     ctx.restore();
-  }
+  };
+  // Attached near the top of the mantle, toward the back, sticking out
+  // up and back (a dumbo octopus's "ears") or straight back (smaller fins).
+  const finAt = ears ? { x: -m.width * 0.2, y: -m.height * 0.32 } : { x: -m.width * 0.36, y: -m.height * 0.22 };
+  const finAngle = ears ? -2.2 : -2.75;
+
+  // Far fin first, just peeking out behind the mantle, a little darker.
+  ctx.fillStyle = sil ?? form.fins.color;
+  ctx.globalAlpha = sil ? 1 : 0.75;
+  fin(finAt.x + m.width * 0.14, finAt.y - m.height * 0.06, finAngle + 0.45 + flap * 0.8, 0.8);
   ctx.globalAlpha = 1;
 
-  // The web between the arms, from the base of the mantle down to a scalloped hem.
+  // The web: from the crown, its front edge drops down and its back edge
+  // sweeps behind, to a scalloped hem between the arm tips.
+  const hem = hemPoints(form, pose.phase);
   const web = new Path2D();
-  web.moveTo(-m.width * 0.42, base - 0.02);
-  const hemY = base + webLen;
-  web.quadraticCurveTo(-hemHalf * 1.05, base + webLen * 0.5, -hemHalf, hemY);
-  for (let i = 1; i < n; i++) {
-    const x0 = -hemHalf + (2 * hemHalf * (i - 1)) / (n - 1);
-    const x1 = -hemHalf + (2 * hemHalf * i) / (n - 1);
-    web.quadraticCurveTo((x0 + x1) / 2, hemY - webLen * 0.16, x1, hemY);
+  web.moveTo(crown.x + 0.05, crown.y - 0.04);
+  web.quadraticCurveTo(hem[0]![0] + 0.03, crown.y + webLen * 0.45, hem[0]![0], hem[0]![1]);
+  for (let i = 1; i < hem.length; i++) {
+    const [x0, y0] = hem[i - 1]!;
+    const [x1, y1] = hem[i]!;
+    web.quadraticCurveTo((x0 + x1) / 2 + 0.01, (y0 + y1) / 2 - webLen * 0.12, x1, y1);
   }
-  web.quadraticCurveTo(hemHalf * 1.05, base + webLen * 0.5, m.width * 0.42, base - 0.02);
+  const last = hem[hem.length - 1]!;
+  web.quadraticCurveTo(last[0] + 0.02, crown.y + webLen * 0.2, mantleCx - m.width * 0.25, crown.y - 0.06);
   web.closePath();
   if (sil) {
     ctx.fillStyle = sil;
     ctx.fill(web);
   } else {
-    const wg = ctx.createLinearGradient(0, base, 0, hemY);
-    wg.addColorStop(0, form.mantle.color);
+    const wg = ctx.createLinearGradient(0, crown.y, 0, crown.y + webLen);
+    wg.addColorStop(0, form.mantle.belly);
     wg.addColorStop(1, form.web.color);
-    ctx.globalAlpha = 0.92;
+    ctx.globalAlpha = 0.94;
     ctx.fillStyle = wg;
     ctx.fill(web);
     ctx.globalAlpha = 1;
-    // Arms run through the web and poke out past the hem.
+    // Arms run from the crown through the web and poke out past the hem.
     ctx.strokeStyle = form.web.armColor;
     ctx.lineWidth = 0.014;
     ctx.lineCap = 'round';
-    const tips = cephalopodArmTips(form, pose.phase);
-    tips.forEach(([tx, ty], i) => {
-      const sx = (i / (n - 1) - 0.5) * m.width * 0.5;
+    for (const [tx, ty] of cephalopodArmTips(form, pose.phase)) {
       ctx.beginPath();
-      ctx.moveTo(sx, base);
-      ctx.quadraticCurveTo(tx * 0.8, base + webLen * 0.6, tx, ty);
+      ctx.moveTo(crown.x, crown.y);
+      ctx.quadraticCurveTo(crown.x + (tx - crown.x) * 0.4, crown.y + (ty - crown.y) * 0.75, tx, ty);
       ctx.stroke();
-    });
+    }
   }
 
-  // Mantle.
+  // Mantle, leaning back.
+  ctx.save();
+  ctx.translate(mantleCx, mantleCy);
+  ctx.rotate(lean);
   const mantle = new Path2D();
-  mantle.ellipse(0, mantleCy, m.width / 2, m.height / 2, 0, 0, TAU);
+  mantle.ellipse(0, 0, m.width / 2, m.height / 2, 0, 0, TAU);
   if (sil) {
     ctx.fillStyle = sil;
     ctx.fill(mantle);
-    return;
+  } else {
+    const mg = ctx.createLinearGradient(0, -m.height / 2, 0, m.height / 2);
+    mg.addColorStop(0, form.mantle.color);
+    mg.addColorStop(1, form.mantle.belly);
+    ctx.fillStyle = mg;
+    ctx.fill(mantle);
+    ctx.save();
+    ctx.clip(mantle);
+    const shade = ctx.createLinearGradient(0, -m.height / 2, 0, m.height / 2);
+    shade.addColorStop(0, 'rgba(255,255,255,0.22)');
+    shade.addColorStop(0.35, 'rgba(255,255,255,0)');
+    shade.addColorStop(1, 'rgba(4,10,24,0.3)');
+    ctx.fillStyle = shade;
+    ctx.fill(mantle);
+    ctx.restore();
   }
-  const mg = ctx.createLinearGradient(0, mantleCy - m.height / 2, 0, mantleCy + m.height / 2);
-  mg.addColorStop(0, form.mantle.color);
-  mg.addColorStop(1, form.mantle.belly);
-  ctx.fillStyle = mg;
-  ctx.fill(mantle);
-  ctx.save();
-  ctx.clip(mantle);
-  const shade = ctx.createLinearGradient(0, mantleCy - m.height / 2, 0, mantleCy + m.height / 2);
-  shade.addColorStop(0, 'rgba(255,255,255,0.22)');
-  shade.addColorStop(0.35, 'rgba(255,255,255,0)');
-  shade.addColorStop(1, 'rgba(4,10,24,0.3)');
-  ctx.fillStyle = shade;
-  ctx.fill(mantle);
   ctx.restore();
 
-  // Two eyes, seen from slightly to the front: turned a little toward the
-  // way it's heading, so the far eye sits closer in and looks a bit smaller.
-  const ey = mantleCy + m.height * 0.28;
-  for (const [ex, scale] of [
-    [-m.width * 0.15, 0.85],
-    [m.width * 0.25, 1],
-  ] as const) {
-    const r = form.eyeSize * scale;
-    ctx.fillStyle = 'rgba(10,6,10,0.85)';
-    ctx.beginPath();
-    ctx.arc(ex, ey, r * 1.2, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = form.eyeColor;
-    ctx.beginPath();
-    ctx.arc(ex, ey, r, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = '#050505';
-    ctx.beginPath();
-    ctx.arc(ex + r * 0.1, ey, r * 0.55, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.beginPath();
-    ctx.arc(ex + r * 0.3, ey - r * 0.35, r * 0.2, 0, TAU);
-    ctx.fill();
-  }
+  // Near fin, over the mantle.
+  ctx.fillStyle = sil ?? form.fins.color;
+  fin(finAt.x, finAt.y, finAngle - flap, 1);
+  if (sil) return;
+
+  // The eye: low on the front of the head, just above the arms, in a slight bulge.
+  ctx.save();
+  ctx.translate(mantleCx, mantleCy);
+  ctx.rotate(lean);
+  const ex = m.width * 0.24;
+  const ey = m.height * 0.2;
+  const r = form.eyeSize;
+  const bulge = ctx.createRadialGradient(ex, ey - r * 0.4, r * 0.4, ex, ey, r * 2.1);
+  bulge.addColorStop(0, 'rgba(255,255,255,0.16)');
+  bulge.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = bulge;
+  ctx.beginPath();
+  ctx.arc(ex, ey, r * 2.1, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(10,6,10,0.6)';
+  ctx.beginPath();
+  ctx.arc(ex, ey, r * 1.15, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = form.eyeColor;
+  ctx.beginPath();
+  ctx.arc(ex, ey, r, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = '#050505';
+  ctx.beginPath();
+  ctx.arc(ex + r * 0.15, ey, r * 0.55, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.beginPath();
+  ctx.arc(ex + r * 0.35, ey - r * 0.3, r * 0.18, 0, TAU);
+  ctx.fill();
+  ctx.restore();
 
   if (look.glow) {
     ctx.fillStyle = look.glow.color;
