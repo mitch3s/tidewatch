@@ -4,6 +4,8 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 
 - Design: [`docs/specs/2026-11-17-tidewatch-design.md`](docs/specs/2026-11-17-tidewatch-design.md)
 - Plan: [`docs/plans/2026-11-17-tidewatch-plan.md`](docs/plans/2026-11-17-tidewatch-plan.md)
+- Changelog: [`CHANGELOG.md`](CHANGELOG.md)
+- v1.4 moments (proposed): [`docs/specs/2026-11-19-tidewatch-v1.4-moments.md`](docs/specs/2026-11-19-tidewatch-v1.4-moments.md)
 - v1.3 deep sea: [`docs/specs/2026-11-18-tidewatch-v1.3-deep-sea.md`](docs/specs/2026-11-18-tidewatch-v1.3-deep-sea.md)
 - v1.2 life (feeding, night rest, close-ups, sound): [`docs/specs/2026-11-18-tidewatch-v1.2-life.md`](docs/specs/2026-11-18-tidewatch-v1.2-life.md)
 - v1.1 look pass: [`docs/specs/2026-11-18-tidewatch-v1.1-look.md`](docs/specs/2026-11-18-tidewatch-v1.1-look.md)
