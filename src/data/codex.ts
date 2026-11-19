@@ -2,9 +2,10 @@
  * Codex entries (spec 3, 5.3): where each fish comes from, and facts about it.
  *
  * Every fact here was checked against the sources listed with it (November
- * 2026). FishBase is the primary source; others are used for behaviour and
- * fun facts. Where sources disagreed, the entry says less rather than more:
- * no water temperature where none was found, and "threatened" for the zebra
+ * 2026). FishBase is the primary source (SeaLifeBase for the deep sea's
+ * jellyfish and cephalopods); others are used for behaviour and fun facts.
+ * Where sources disagreed, the entry says less rather than more: no water
+ * temperature where none was found, and "threatened" for the zebra
  * pleco, whose exact IUCN category is reported inconsistently.
  *
  * `range` is a rough outline of the native range as [longitude, latitude]
@@ -401,5 +402,174 @@ export const CODEX: Record<string, Codex> = {
       'The father carries the eggs, and later the young, in his mouth.',
     ],
     sources: [fishbase('6234'), { label: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Silver_arowana' }],
+  },
+
+  // Deep sea (v1.3). Atolla's depth is left out: SeaLifeBase (0–1500 m) and Wikipedia (1,000–4,000 m) disagree.
+  'atolla-jellyfish': {
+    nativeRange: 'Oceans around the world: the Atlantic, Indian and Pacific oceans, from tropical to polar waters',
+    // SeaLifeBase: 78°N to 44°S, all longitudes.
+    range: [
+      [
+        [-180, 78],
+        [180, 78],
+        [180, -44],
+        [-180, -44],
+      ],
+    ],
+    habitat: 'Open water far offshore, in the deep sea',
+    size: { cm: 15, measure: 'WD' },
+    diet: 'Crustaceans and other drifting food',
+    water: { type: 'salt' },
+    funFacts: [
+      'When attacked, it sets off a series of blue flashes, which may draw in bigger predators more interested in its attacker than in the jelly itself.',
+      'One of its tentacles grows much longer than the others, and is thought to help it catch prey.',
+      'The marine biologist Edith Widder built a camera lure, the E-jelly, that copies its alarm flashes.',
+    ],
+    sources: [sealifebase('Atolla-wyvillei'), { label: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Atolla_jellyfish' }],
+  },
+
+  'vampire-squid': {
+    nativeRange: 'Tropical and temperate oceans around the world',
+    // SeaLifeBase: 44°N to 35°S, all longitudes.
+    range: [
+      [
+        [-180, 44],
+        [180, 44],
+        [180, -35],
+        [-180, -35],
+      ],
+    ],
+    habitat: 'The open ocean at about 600 to 900 m and deeper, where no sunlight reaches; especially common where the water holds very little oxygen',
+    size: { cm: 30, measure: 'TL' },
+    diet: 'Marine snow: drifting detritus, including the remains of jelly-like zooplankton, plus small zooplankton',
+    water: { type: 'salt' },
+    funFacts: [
+      'Despite its name it is neither a vampire nor a squid, but the last surviving member of an ancient group of cephalopods.',
+      "It doesn't drink blood: it gathers drifting bits of food with two long, thin, sticky filaments.",
+      'If disturbed, it can release a sticky cloud of glowing blue mucus from its arm tips.',
+    ],
+    sources: [
+      sealifebase('Vampyroteuthis-infernalis'),
+      { label: 'MBARI', url: 'https://www.mbari.org/animal/vampire-squid/' },
+      { label: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Vampire_squid' },
+    ],
+  },
+
+  'dumbo-octopus': {
+    nativeRange: 'Probably all the world\'s oceans: found off Oregon, California, the Azores, New Zealand, Australia, the Philippines and Argentina, and in the Gulf of Mexico',
+    // Thought to be worldwide; drawn as a broad band covering the places it has been found.
+    range: [
+      [
+        [-180, 55],
+        [180, 55],
+        [180, -50],
+        [-180, -50],
+      ],
+    ],
+    habitat: 'On and just above the seafloor in the cold deep sea; species in the genus have been found from about 480 m down to nearly 7,000 m',
+    // The largest length SeaLifeBase lists for the genus (Grimpoteuthis umbellata).
+    size: { cm: 40, measure: 'TL' },
+    diet: 'Crustaceans, bivalves, worms and copepods',
+    water: { type: 'salt' },
+    funFacts: [
+      'Its nickname comes from the two ear-like fins above its eyes, which recall the title character of Disney\'s 1941 film Dumbo.',
+      'Dumbo octopuses are the deepest-living octopuses known: one was filmed 6,957 m down in the Java Trench in 2020.',
+      'It swims by flapping its fins, and rests on the seafloor with its arms and web spread out.',
+    ],
+    sources: [
+      sealifebase('Grimpoteuthis-umbellata'),
+      { label: 'SeaLifeBase (genus)', url: 'https://www.sealifebase.se/identification/SpeciesList.php?genus=Grimpoteuthis' },
+      { label: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Grimpoteuthis' },
+    ],
+  },
+
+  'spotted-lanternfish': {
+    nativeRange: 'North Atlantic, from Greenland and the USA across to West Africa, plus the Mediterranean Sea',
+    // FishBase: 69°N to 15°N, 67°W to 36°E.
+    range: [
+      [
+        [-67, 38],
+        [-60, 58],
+        [-48, 69],
+        [-15, 69],
+        [8, 62],
+        [-6, 48],
+        [-10, 38],
+        [-5, 36],
+        [10, 39],
+        [36, 37],
+        [36, 31],
+        [10, 32],
+        [-8, 33],
+        [-17, 20],
+        [-18, 15],
+        [-30, 15],
+        [-50, 28],
+      ],
+    ],
+    habitat: 'The open ocean, 225 to 750 m deep by day; at night it rises into the top 125 m',
+    size: { cm: 11, measure: 'SL' },
+    diet: 'Copepods, euphausiids (krill), crab larvae and young fish',
+    water: { type: 'salt' },
+    funFacts: [
+      'It spends the day hundreds of metres down and swims up toward the surface at dusk.',
+      'Like most lanternfish, it has glowing spots on its belly that hide its silhouette from predators looking up from below.',
+      'Its larvae have eyes on stalks.',
+    ],
+    sources: [
+      fishbase('1328'),
+      { label: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Myctophum_punctatum' },
+      { label: 'Wikipedia (lanternfish)', url: 'https://en.wikipedia.org/wiki/Lanternfish' },
+    ],
+  },
+
+  'lovely-hatchetfish': {
+    nativeRange: 'The Atlantic, Indian and Pacific oceans, including the Gulf of Aden',
+    // FishBase: 40°N to 35°S, all longitudes.
+    range: [
+      [
+        [-180, 40],
+        [180, 40],
+        [180, -35],
+        [-180, -35],
+      ],
+    ],
+    habitat: 'The open ocean, mostly 300 to 600 m deep by day and 100 to 300 m at night; recorded from 100 to 2,056 m',
+    size: { cm: 8.3, measure: 'SL' },
+    diet: 'Mostly ostracods (tiny crustaceans), plus copepods and the larvae of other crustaceans and fish; it feeds mainly at dusk',
+    water: { type: 'salt' },
+    funFacts: [
+      'Its big eyes point upward, to spot the silhouettes of prey against the slightly brighter water above.',
+      'Glowing organs on its belly match the faint light from above, so it casts no dark shadow for predators below.',
+      'Each night it rises a few hundred metres toward the surface, and goes back down by day.',
+    ],
+    sources: [
+      fishbase('130'),
+      { label: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Argyropelecus_aculeatus' },
+      { label: 'Wikipedia (marine hatchetfish)', url: 'https://en.wikipedia.org/wiki/Marine_hatchetfish' },
+    ],
+  },
+
+  'humpback-anglerfish': {
+    nativeRange: 'Tropical to temperate parts of all oceans, including the South China and East China seas',
+    // FishBase: 50°N to 50°S, all longitudes.
+    range: [
+      [
+        [-180, 50],
+        [180, 50],
+        [180, -50],
+        [-180, -50],
+      ],
+    ],
+    habitat: 'The open ocean, usually 100 to 1,500 m deep, and recorded down to 4,500 m',
+    size: { cm: 18, measure: 'TL' },
+    diet: 'Animals drawn to its lure: it waits in ambush, and its long teeth and large stomach let it eat prey bigger than itself',
+    water: { type: 'salt' },
+    funFacts: [
+      'Only females have the glowing lure on the snout, and its light comes from bacteria living in the bulb.',
+      'Males grow to only 2.9 cm, against 18 cm for females, and cling to a female only briefly to mate.',
+      'One humpback anglerfish weighing 8.8 g was found with 12.3 g of snipe eels in its stomach.',
+    ],
+    sources: [fishbase('2292'), { label: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Humpback_anglerfish' }],
   },
 };

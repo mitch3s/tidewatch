@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { CODEX } from '../../src/data/codex';
 import { ALL_SPECIES } from '../../src/data/species';
-import { PENDING_CODEX, PENDING_DEEP } from '../../src/data/species/pending';
-import type { Species } from '../../src/data/types';
-
-/** Deep-sea animals whose codex entries are written but not yet registered (spec v1.3 §6). */
-const PENDING_WITH_CODEX: Species[] = PENDING_DEEP.filter((d) => PENDING_CODEX[d.id]).map((d) => ({ ...d, codex: PENDING_CODEX[d.id]! }));
 
 /** Every codex entry must be complete and sourced (plan 6.4). */
-describe.each([...ALL_SPECIES, ...PENDING_WITH_CODEX].map((s) => [s.id, s] as const))('codex: %s', (id, s) => {
+describe.each(ALL_SPECIES.map((s) => [s.id, s] as const))('codex: %s', (id, s) => {
   const c = s.codex;
 
   it('has every field filled in', () => {
@@ -66,7 +61,7 @@ describe.each([...ALL_SPECIES, ...PENDING_WITH_CODEX].map((s) => [s.id, s] as co
   });
 
   it('is keyed by the species id', () => {
-    expect(CODEX[id] ?? PENDING_CODEX[id]).toBe(c);
+    expect(CODEX[id]).toBe(c);
   });
 });
 
@@ -80,10 +75,4 @@ it('starts every tank with species that exist, in that tank', async () => {
   for (const rule of BIOME_RULES) {
     for (const id of rule.starters) expect(ALL_SPECIES.find((sp) => sp.id === id)?.biome).toBe(rule.biome);
   }
-});
-
-it('has no species both registered and still pending', async () => {
-  const { PENDING_DEEP } = await import('../../src/data/species/pending');
-  const ids = new Set(ALL_SPECIES.map((s) => s.id));
-  for (const d of PENDING_DEEP) expect(ids.has(d.id)).toBe(false);
 });

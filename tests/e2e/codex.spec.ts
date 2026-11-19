@@ -90,7 +90,8 @@ test('settings change with the remote and are saved', async ({ page }) => {
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight'); // Settings tab
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight'); // Settings tab (after reef, Amazon, deep sea)
   await expect(page.locator('.tw-settings')).toBeVisible();
   await page.keyboard.press('ArrowDown');
   await expect(focused(page)).toContainText('Switch tanks automatically');
@@ -120,6 +121,7 @@ test('reset progress needs a second press', async ({ page }) => {
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight'); // Settings tab
   for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowDown');
   await expect(focused(page)).toContainText('Reset progress');
   await page.keyboard.press('Enter');
@@ -151,7 +153,8 @@ test('turning the sound on starts the ambience without errors', async ({ page })
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight'); // Settings tab
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight'); // Settings tab (after reef, Amazon, deep sea)
   for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
   await expect(focused(page)).toContainText('Ambient sound');
   await page.keyboard.press('Enter');

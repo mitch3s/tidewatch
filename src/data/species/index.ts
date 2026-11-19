@@ -1,15 +1,21 @@
 import { CODEX } from '../codex';
 import type { BiomeId, Species, SpeciesDef } from '../types';
+import { atollaJellyfish } from './atolla-jellyfish';
 import { blueTang } from './blue-tang';
 import { bronzeCorydoras } from './bronze-corydoras';
 import { discus } from './discus';
+import { dumboOctopus } from './dumbo-octopus';
 import { freshwaterAngelfish } from './freshwater-angelfish';
+import { humpbackAnglerfish } from './humpback-anglerfish';
+import { lovelyHatchetfish } from './lovely-hatchetfish';
 import { mandarinDragonet } from './mandarin-dragonet';
 import { moorishIdol } from './moorish-idol';
 import { neonTetra } from './neon-tetra';
 import { ocellarisClownfish } from './ocellaris-clownfish';
 import { royalGramma } from './royal-gramma';
 import { silverArowana } from './silver-arowana';
+import { spottedLanternfish } from './spotted-lanternfish';
+import { vampireSquid } from './vampire-squid';
 import { yellowTang } from './yellow-tang';
 import { zebraPleco } from './zebra-pleco';
 
@@ -19,7 +25,7 @@ const withCodex = (def: SpeciesDef): Species => {
   return { ...def, codex };
 };
 
-/** The v1 roster (spec section 3), in codex order. */
+/** The roster (spec section 3, plus the v1.3 deep sea), in codex order. */
 export const ALL_SPECIES: readonly Species[] = [
   ocellarisClownfish,
   yellowTang,
@@ -33,6 +39,12 @@ export const ALL_SPECIES: readonly Species[] = [
   discus,
   zebraPleco,
   silverArowana,
+  atollaJellyfish,
+  spottedLanternfish,
+  lovelyHatchetfish,
+  vampireSquid,
+  dumboOctopus,
+  humpbackAnglerfish,
 ].map(withCodex);
 
 export function getSpecies(id: string): Species | undefined {

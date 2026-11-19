@@ -4,10 +4,21 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 
 - Design: [`docs/specs/2026-11-17-tidewatch-design.md`](docs/specs/2026-11-17-tidewatch-design.md)
 - Plan: [`docs/plans/2026-11-17-tidewatch-plan.md`](docs/plans/2026-11-17-tidewatch-plan.md)
+- v1.3 deep sea: [`docs/specs/2026-11-18-tidewatch-v1.3-deep-sea.md`](docs/specs/2026-11-18-tidewatch-v1.3-deep-sea.md)
 - v1.2 life (feeding, night rest, close-ups, sound): [`docs/specs/2026-11-18-tidewatch-v1.2-life.md`](docs/specs/2026-11-18-tidewatch-v1.2-life.md)
 - v1.1 look pass: [`docs/specs/2026-11-18-tidewatch-v1.1-look.md`](docs/specs/2026-11-18-tidewatch-v1.1-look.md)
 
 **Status:** Milestone 7 of 8. The whole app works with a remote: the aquarium, collecting, the codex and settings. Next is testing on a real TV (Milestone 8).
+
+## Tanks
+
+| Tank | How it unlocks | Animals |
+|---|---|---|
+| Coral reef | From the start | Ocellaris clownfish, yellow tang, blue tang, royal gramma, Moorish idol, mandarin dragonet (rare visitor) |
+| Amazon river | Collect 4 reef species | Neon tetra, bronze corydoras, freshwater angelfish, blue discus, zebra pleco and silver arowana (both rare visitors) |
+| Deep sea (1.3) | Collect 4 Amazon species | Atolla jellyfish, spotted lanternfish, lovely hatchetfish, vampire squid, dumbo octopus, humpback anglerfish (rare visitor) |
+
+The deep sea is almost black: no sunlight, only the animals' own glow. Lanternfish and hatchetfish rise toward the surface at night.
 
 ## Getting started
 
@@ -63,6 +74,7 @@ These debug flags work in development builds only (`npm run dev` or `npm run bui
 Flags can be combined, e.g. `/?reset&visitor=now&debug`. These work in every build:
 
 - `/?hour=21.5`: preview the lighting at a time of day (otherwise it follows the clock).
+- `/?tank=deep` (development builds): the deep-sea tank with its whole roster. Add `&hour=23` for the night migration.
 - `/?fish=ocellaris-clownfish`: one species large and centred, swimming in place. Add `&still` to freeze it and `&turn=0.5` to see a turn stage.
 
 ### God mode

@@ -9,12 +9,8 @@ export interface BiomeRule {
   requires: { biome: BiomeId; collected: number } | null;
 }
 
-/**
- * The deep sea tank (spec v1.3) goes live when this is true. Its animals
- * must first be registered in species/index.ts with codex facts checked
- * against their sources; until then they're in species/pending.ts.
- */
-export const DEEP_SEA_READY: boolean = false;
+/** The deep sea tank (spec v1.3) is live. */
+export const DEEP_SEA_READY: boolean = true;
 
 const DEEP_RULE: BiomeRule = {
   biome: 'deep',

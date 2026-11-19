@@ -19,6 +19,12 @@ const IDS = [
   'discus',
   'zebra-pleco',
   'silver-arowana',
+  'atolla-jellyfish',
+  'spotted-lanternfish',
+  'lovely-hatchetfish',
+  'vampire-squid',
+  'dumbo-octopus',
+  'humpback-anglerfish',
 ];
 
 for (const id of IDS) {

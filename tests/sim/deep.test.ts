@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { PENDING_DEEP } from '../../src/data/species/pending';
+import { getSpecies, speciesIn } from '../../src/data/species';
 import type { Species } from '../../src/data/types';
 import { Tank } from '../../src/sim/tank';
 
 const env = { bounds: { left: 60, right: 1860, top: 90, bottom: 875 }, home: { x: 960, y: 520 } };
-const asSpecies = (id: string): Species => ({ ...PENDING_DEEP.find((d) => d.id === id)!, codex: {} as Species['codex'] });
+const asSpecies = (id: string): Species => getSpecies(id)!;
 
 function meanY(tank: Tank, id: string, seconds: number): number {
   let sum = 0;
@@ -42,12 +42,12 @@ describe('deep-sea behaviour', () => {
   });
 });
 
-describe('pending deep-sea roster', () => {
-  it('has the six planned animals, all in the deep tank', () => {
-    expect(PENDING_DEEP.map((d) => d.id).sort()).toEqual(
-      ['atolla-jellyfish', 'dumbo-octopus', 'humpback-anglerfish', 'silver-hatchetfish', 'spotted-lanternfish', 'vampire-squid'],
+describe('deep-sea roster', () => {
+  it('has the six planned animals, with the anglerfish as its rare visitor', () => {
+    const deep = speciesIn('deep');
+    expect(deep.map((d) => d.id).sort()).toEqual(
+      ['atolla-jellyfish', 'dumbo-octopus', 'humpback-anglerfish', 'lovely-hatchetfish', 'spotted-lanternfish', 'vampire-squid'],
     );
-    for (const d of PENDING_DEEP) expect(d.biome).toBe('deep');
-    expect(PENDING_DEEP.filter((d) => d.rarity === 'rare').map((d) => d.id)).toEqual(['humpback-anglerfish']);
+    expect(deep.filter((d) => d.rarity === 'rare').map((d) => d.id)).toEqual(['humpback-anglerfish']);
   });
 });

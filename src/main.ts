@@ -1,8 +1,6 @@
 import { App } from './app';
 import { BIOMES } from './data/biomes';
-import { getSpecies } from './data/species';
-import { PENDING_DEEP } from './data/species/pending';
-import type { Species, SpeciesDef } from './data/types';
+import { getSpecies, speciesIn } from './data/species';
 import { DEV_TOOLS } from './dev/enabled';
 import { parseDevFlags } from './dev/urlFlags';
 import { createPlatform } from './platform';
@@ -18,27 +16,12 @@ if (!host) throw new Error('#stage element missing');
 const platform = createPlatform();
 const stage = new Stage(host, platform.name === 'webos' ? 1 : 2);
 
-/**
- * Development builds only: deep-sea species that aren't in the game yet
- * (their codex facts still need checking), for the previews below.
- */
-const pending = (def: SpeciesDef): Species => ({
-  ...def,
-  codex: { nativeRange: '', range: [], habitat: '', size: { cm: 0, measure: 'TL' }, diet: '', water: { type: 'salt' }, funFacts: [], sources: [] },
-});
-const findSpecies = (id: string): Species | undefined => {
-  const s = getSpecies(id);
-  if (s || !DEV_TOOLS) return s;
-  const def = PENDING_DEEP.find((d) => d.id === id);
-  return def && pending(def);
-};
-
 const previewId = params.get('fish');
 const previewTank = DEV_TOOLS ? params.get('tank') : null;
 if (previewTank === 'deep') {
-  // `?tank=deep` (development builds): the deep-sea tank with its pending roster.
+  // `?tank=deep` (development builds): the deep-sea tank with its whole roster.
   const hour = Number(params.get('hour') ?? 12);
-  const scene = new TankScene(BIOMES.deep, PENDING_DEEP.map(pending), { hour: () => hour, closeups: () => params.get('closeup') === 'now' });
+  const scene = new TankScene(BIOMES.deep, speciesIn('deep'), { hour: () => hour, closeups: () => params.get('closeup') === 'now' });
   scene.closeupsAllowed = true;
   if (params.get('closeup') === 'now') requestAnimationFrame(() => scene.startCloseup());
   scene.prepare(stage.pixelScale);
@@ -48,7 +31,7 @@ if (previewTank === 'deep') {
   // `?fish=<id>`: show one species large and centred (screenshots, and the
   // starting point for the god-mode fish lab). Add `&still` to freeze it, and
   // `&turn=0..1` to see a stage of turning around.
-  const species = findSpecies(previewId);
+  const species = getSpecies(previewId);
   if (!species) throw new Error(`Unknown species: ${previewId}`);
   const still = params.has('still');
   const turn = Number(params.get('turn') ?? 0);
