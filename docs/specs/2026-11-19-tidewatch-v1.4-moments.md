@@ -1,7 +1,7 @@
 # Tidewatch v1.4: moments
 
 **Date:** 2026-11-19
-**Status:** Parts 1 (the moon) and 2 (moments, with the first four) released in 1.4.0 (19 November 2026), awaiting a TV test; part 3 (six more moments and the timeline) implemented, not yet released, awaiting a TV test.
+**Status:** Parts 1 (the moon) and 2 (moments, with the first four) released in 1.4.0 (19 November 2026), awaiting a TV test; part 3 (six more moments and the timeline) released in 1.5.0 (19 November 2026), awaiting a TV test.
 **Builds on:** [`2026-11-18-tidewatch-v1.3-deep-sea.md`](2026-11-18-tidewatch-v1.3-deep-sea.md)
 
 ## 1. Why
@@ -116,4 +116,4 @@ A new field `moments: Record<string, { witnessedAt: string }>` plus the moment t
 
 ## 7. Version
 
-1.4.0, shown in the app as before. Parts 1 and 2 can ship as 1.4.0 on their own if part 3 runs long; part 3 then becomes 1.4.1 or 1.5.
+Parts 1 and 2 shipped as 1.4.0; part 3, which adds features rather than fixes, as 1.5.0. Shown in the app as before.

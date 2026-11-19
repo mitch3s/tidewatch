@@ -5,12 +5,12 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 - Design: [`docs/specs/2026-11-17-tidewatch-design.md`](docs/specs/2026-11-17-tidewatch-design.md)
 - Plan: [`docs/plans/2026-11-17-tidewatch-plan.md`](docs/plans/2026-11-17-tidewatch-plan.md)
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
-- v1.4 moon and moments: [`docs/specs/2026-11-19-tidewatch-v1.4-moments.md`](docs/specs/2026-11-19-tidewatch-v1.4-moments.md)
+- v1.4 moon and moments (1.4.0 and 1.5.0): [`docs/specs/2026-11-19-tidewatch-v1.4-moments.md`](docs/specs/2026-11-19-tidewatch-v1.4-moments.md)
 - v1.3 deep sea: [`docs/specs/2026-11-18-tidewatch-v1.3-deep-sea.md`](docs/specs/2026-11-18-tidewatch-v1.3-deep-sea.md)
 - v1.2 life (feeding, night rest, close-ups, sound): [`docs/specs/2026-11-18-tidewatch-v1.2-life.md`](docs/specs/2026-11-18-tidewatch-v1.2-life.md)
 - v1.1 look pass: [`docs/specs/2026-11-18-tidewatch-v1.1-look.md`](docs/specs/2026-11-18-tidewatch-v1.1-look.md)
 
-**Status:** 1.4.0. The app was first tested on an LG C6 in November 2026; 1.2's sound and close-ups, 1.3 and 1.4 still need a TV test. What changed in each version: [`CHANGELOG.md`](CHANGELOG.md).
+**Status:** 1.5.0. The app was first tested on an LG C6 in November 2026; 1.2's sound and close-ups, 1.3, 1.4 and 1.5 still need a TV test. What changed in each version: [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Tanks
 
@@ -123,7 +123,7 @@ You need the TV and your PC on the same network.
 3. Build, install and launch:
    ```bash
    npm run package:webos
-   npx ares-install --device tv out/com.tidewatch.app_1.4.0_all.ipk
+   npx ares-install --device tv out/com.tidewatch.app_1.5.0_all.ipk
    npx ares-launch --device tv com.tidewatch.app
    ```
 

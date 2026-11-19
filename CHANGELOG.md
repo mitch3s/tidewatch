@@ -6,7 +6,9 @@ Add a line under **Unreleased** with each change that someone using the app woul
 
 ## Unreleased
 
-Toward 1.4 part 3. [Spec](docs/specs/2026-11-19-tidewatch-v1.4-moments.md)
+## 1.5.0 (2026-11-19)
+
+More moments and the timeline (v1.4 part 3). [Spec](docs/specs/2026-11-19-tidewatch-v1.4-moments.md)
 
 - Six more moments: the Atolla jellyfish's alarm display, the vampire squid's "pineapple" pose, an arowana leaping out of the water (by day), a royal gramma swimming upside down under the plate coral (by day), the neon tetra school settling for the night, and coral spawning across the whole reef (at night, a few nights after a full moon, October to December).
 - Timeline: a new codex tab listing everything that has happened, newest first: tanks discovered, fish arrived, visitors caught or missed, moments seen.
