@@ -1,11 +1,13 @@
 import { BIOMES } from '../data/biomes';
+import { APP_COMMIT, APP_VERSION } from '../version';
 import { DEV_TOOLS } from '../dev/enabled';
 import { ALL_SPECIES, getSpecies } from '../data/species';
 import { BIOME_ORDER, BIOME_RULES } from '../data/progression';
+import type { Codex } from '../data/codex';
 import type { BiomeId, Species } from '../data/types';
 import type { Action } from '../input/actions';
 import { renderFish, restPose } from '../render/fish/renderFish';
-import type { RotationMinutes, SaveState } from '../save/schema';
+import { type RotationMinutes, type SaveState, SOUND_LEVELS } from '../save/schema';
 import { TAU } from '../util/math';
 import { FocusGroup } from './focus';
 import { escapeHtml, type UiRoot } from './root';
@@ -16,6 +18,8 @@ export interface CodexHost {
   readonly state: SaveState;
   setRotation(min: RotationMinutes): void;
   setDayNight(on: boolean): void;
+  /** Change other settings (close-ups, sound). */
+  setSettings(patch: Partial<SaveState['settings']>): void;
   resetProgress(): void;
   /** Close the app (only offered on the TV). */
   exitApp(): void;
@@ -31,8 +35,27 @@ export interface CodexHost {
 
 type Page = { kind: 'grid'; tab: BiomeId | 'settings' } | { kind: 'entry'; id: string };
 
+/** How each size measure is explained after the number (see Codex.size). */
+const SIZE_NOTE: Record<Codex['size']['measure'], string> = {
+  TL: '',
+  SL: ' (not counting the tail fin)',
+  WD: ' across the bell',
+};
+
 const RARITY_LABEL = { common: 'Common', uncommon: 'Uncommon', rare: 'Rare visitor' } as const;
 const ROTATIONS: RotationMinutes[] = [0, 5, 15, 30];
+const SOUND_LABEL = { off: 'Off', quiet: 'Quiet', normal: 'Normal' } as const;
+/** Water behind fish on codex cards and entry pages, top and bottom colour per tank. */
+const CARD_WATER: Record<BiomeId, [string, string]> = {
+  reef: ['#0d5d7e', '#06324c'],
+  amazon: ['#4c5126', '#232510'],
+  deep: ['#0b1a30', '#02060e'],
+};
+const ENTRY_WATER: Record<BiomeId, [string, string]> = {
+  reef: ['#0e6488', '#052b42'],
+  amazon: ['#575c2c', '#1f210e'],
+  deep: ['#0c1c34', '#02050c'],
+};
 
 /**
  * The codex (spec 5.2, 5.3, 5.4): a tab per tank with a card per species, a
@@ -143,6 +166,8 @@ export class CodexScreen {
     switch (el.dataset.setting) {
       case 'rotation':
       case 'daynight':
+      case 'closeups':
+      case 'sound':
         this.adjustSetting(1);
         return;
       case 'reset':
@@ -181,6 +206,17 @@ export class CodexScreen {
     }
     if (s === 'daynight') {
       this.host.setDayNight(!settings.dayNight);
+      this.refreshSettings();
+      return true;
+    }
+    if (s === 'closeups') {
+      this.host.setSettings({ closeups: !settings.closeups });
+      this.refreshSettings();
+      return true;
+    }
+    if (s === 'sound') {
+      const i = SOUND_LEVELS.indexOf(settings.sound);
+      this.host.setSettings({ sound: SOUND_LEVELS[(i + dir + SOUND_LEVELS.length) % SOUND_LEVELS.length]! });
       this.refreshSettings();
       return true;
     }
@@ -282,10 +318,13 @@ export class CodexScreen {
     return `<div class="tw-settings">
       <div class="tw-setting" data-focus data-setting="rotation"><span>Switch tanks automatically</span><b>‹ ${rot} ›</b></div>
       <div class="tw-setting" data-focus data-setting="daynight"><span>Day and night lighting</span><b>‹ ${s.dayNight ? 'On' : 'Off'} ›</b></div>
+      <div class="tw-setting" data-focus data-setting="closeups"><span>Close-ups of fish now and then</span><b>‹ ${s.closeups ? 'On' : 'Off'} ›</b></div>
+      <div class="tw-setting" data-focus data-setting="sound"><span>Ambient sound</span><b>‹ ${SOUND_LABEL[s.sound]} ›</b></div>
       <div class="tw-setting tw-danger${this.confirmReset !== null ? ' tw-armed' : ''}" data-focus data-setting="reset"><span>Reset progress</span><b>${reset}</b></div>
       ${DEV_TOOLS && this.host.openGodMode ? `<div class="tw-setting" data-focus data-setting="god"><span>Open god mode</span><b>Development build</b></div>` : ''}
       ${this.host.canExit ? `<div class="tw-setting${this.confirmExit !== null ? ' tw-armed' : ''}" data-focus data-setting="exit"><span>Exit Tidewatch</span><b>${exit}</b></div>` : ''}
       <p class="tw-about">Fish facts come from FishBase and the other sources listed in each codex entry. Map data: Natural Earth.</p>
+      <p class="tw-about tw-build">Tidewatch ${APP_VERSION} · build ${APP_COMMIT}</p>
     </div>`;
   }
 
@@ -317,7 +356,7 @@ export class CodexScreen {
     }
     const date = p.collectedAt ? new Date(p.collectedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : '';
     const temp = c.water.tempC ? `, ${c.water.tempC[0]}–${c.water.tempC[1]} °C` : '';
-    const size = `Up to ${c.size.cm} cm${c.size.measure === 'SL' ? ' (not counting the tail fin)' : ''}`;
+    const size = `Up to ${c.size.cm} cm${SIZE_NOTE[c.size.measure]}`;
     const fact = (label: string, value: string) => `<div class="tw-fact"><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`;
     return `<div class="tw-entry">
       <div class="tw-entry-visual"><canvas class="tw-entry-fish"></canvas><canvas class="tw-entry-map"></canvas><div class="tw-map-label">Native range</div></div>
@@ -382,8 +421,8 @@ export class CodexScreen {
     const s = getSpecies(id)!;
     const state = this.host.state.species[id]?.state ?? 'unseen';
     const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, s.biome === 'reef' ? '#0d5d7e' : '#4c5126');
-    g.addColorStop(1, s.biome === 'reef' ? '#06324c' : '#232510');
+    g.addColorStop(0, CARD_WATER[s.biome][0]);
+    g.addColorStop(1, CARD_WATER[s.biome][1]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
     if (state === 'unseen') {
@@ -413,8 +452,8 @@ export class CodexScreen {
       canvas: fish,
       draw: (ctx, w, h) => {
         const g = ctx.createLinearGradient(0, 0, 0, h);
-        g.addColorStop(0, s.biome === 'reef' ? '#0e6488' : '#575c2c');
-        g.addColorStop(1, s.biome === 'reef' ? '#052b42' : '#1f210e');
+        g.addColorStop(0, ENTRY_WATER[s.biome][0]);
+        g.addColorStop(1, ENTRY_WATER[s.biome][1]);
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, w, h);
         const length = Math.min(w * 0.6, (h * 0.62) / Math.max(0.2, (s.look.body.upper ?? 0.2) + 0.14));

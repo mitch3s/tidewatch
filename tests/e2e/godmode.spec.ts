@@ -40,7 +40,7 @@ test('collect everything goes through the game and is saved', async ({ page }) =
   await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
   const s = await page.evaluate(() => JSON.parse(localStorage.getItem('tidewatch.save')!));
   expect(Object.values(s.species as Record<string, { state: string }>).every((p) => p.state === 'collected')).toBe(true);
-  expect(s.unlockedBiomes).toEqual(['reef', 'amazon']);
+  expect(s.unlockedBiomes).toEqual(['reef', 'amazon', 'deep']);
 });
 
 test('setting a species back to unseen is saved', async ({ page }) => {
@@ -83,10 +83,11 @@ test('god mode opens from the codex settings (for remotes without colour buttons
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight'); // Settings tab
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight'); // Settings tab (after reef, Amazon, deep sea)
   const row = page.locator('[data-setting="god"]');
   await expect(row).toContainText('Open god mode');
-  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
+  for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowDown');
   await expect(page.locator('.tw-codex .tw-focused')).toContainText('Open god mode');
   await page.keyboard.press('Enter');
   await expect(page.locator('.tw-codex')).toHaveCount(0);

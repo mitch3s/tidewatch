@@ -8,8 +8,23 @@ const FRAMES = 16;
 /** Sprites are drawn at the largest size a tank fish can have (depth scale 1.1). */
 const SIZE_FACTOR = 1.12;
 
+/**
+ * Depth levels: 0 = near (as drawn), 1 = middle distance, 2 = far. Distant
+ * fish are tinted towards the water's haze colour (no blur: blurred fish
+ * looked bad), baked into the cached frames so it costs nothing per frame.
+ */
+export type DepthLevel = 0 | 1 | 2;
+export const HAZE_ALPHA: Record<DepthLevel, number> = { 0: 0, 1: 0.2, 2: 0.4 };
+
+/** The depth level for a fish's depth value z (0.7 far .. 1.1 near). */
+export function depthLevel(z: number): DepthLevel {
+  return z < 0.83 ? 2 : z < 0.96 ? 1 : 0;
+}
+
+
 interface SpriteSet {
   look: FishLook;
+  level: DepthLevel;
   pixelScale: number;
   /** Fish length the frames were drawn at, in logical pixels. */
   refLength: number;
@@ -30,12 +45,18 @@ interface SpriteSet {
 export class FishSprites {
   private readonly sets = new Map<string, SpriteSet>();
 
-  constructor(private readonly pixelScale: () => number) {}
+  /**
+   * @param haze colour distant fish fade into (the biome's haze), as a CSS colour.
+   */
+  constructor(
+    private readonly pixelScale: () => number,
+    private readonly haze = '#0d6f94',
+  ) {}
 
   /** Draw a fish from the cache. Returns false if the caller should draw it directly. */
-  draw(ctx: CanvasRenderingContext2D, species: Species, pose: FishPose): boolean {
+  draw(ctx: CanvasRenderingContext2D, species: Species, pose: FishPose, level: DepthLevel = 0): boolean {
     if ((pose.turn ?? 0) > 0.001 || Math.abs(Math.abs(pose.facing) - 1) > 0.001) return false;
-    const set = this.setFor(species);
+    const set = this.setFor(species, level);
     if (!set) return false;
     const phase = ((pose.phase % TAU) + TAU) % TAU;
     const i = Math.floor((phase / TAU) * FRAMES) % FRAMES;
@@ -46,8 +67,16 @@ export class FishSprites {
     const s = pose.length / set.refLength;
     ctx.save();
     ctx.translate(pose.x, pose.y);
-    ctx.rotate(pose.facing < 0 ? -pose.pitch : pose.pitch);
-    ctx.scale(s * pose.facing, s);
+    // Match how renderCreature tilts and mirrors (jellies never mirror).
+    const form = species.look.creature;
+    if (form?.kind === 'jelly') {
+      ctx.rotate(pose.pitch * 0.3);
+      ctx.scale(s, s);
+    } else {
+      const pitch = form ? pose.pitch * 0.5 : pose.pitch;
+      ctx.rotate(pose.facing < 0 ? -pitch : pitch);
+      ctx.scale(s * pose.facing, s);
+    }
     ctx.drawImage(frame, -set.cx / ps, -set.cy / ps, set.w / ps, set.h / ps);
     ctx.restore();
     return true;
@@ -58,15 +87,16 @@ export class FishSprites {
     this.sets.clear();
   }
 
-  private setFor(species: Species): SpriteSet | null {
+  private setFor(species: Species, level: DepthLevel): SpriteSet | null {
     const ps = Math.min(this.pixelScale(), 2);
-    let set = this.sets.get(species.id);
+    const key = `${species.id}:${level}`;
+    let set = this.sets.get(key);
     if (set && set.look === species.look && set.pixelScale === ps) return set;
     const refLength = species.displayLength * SIZE_FACTOR;
     const bounds = measure(species.look, refLength, ps);
     if (!bounds) return null;
-    set = { look: species.look, pixelScale: ps, refLength, ...bounds, frames: new Array(FRAMES).fill(null) };
-    this.sets.set(species.id, set);
+    set = { look: species.look, level, pixelScale: ps, refLength, ...bounds, frames: new Array(FRAMES).fill(null) };
+    this.sets.set(key, set);
     return set;
   }
 
@@ -78,6 +108,14 @@ export class FishSprites {
     if (!ctx) return null;
     ctx.setTransform(set.pixelScale, 0, 0, set.pixelScale, 0, 0);
     renderFish(ctx, look, framePose(look, set.cx / set.pixelScale, set.cy / set.pixelScale, set.refLength, i));
+    const haze = HAZE_ALPHA[set.level];
+    if (haze > 0) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.globalAlpha = haze;
+      ctx.fillStyle = this.haze;
+      ctx.fillRect(0, 0, c.width, c.height);
+    }
     return c;
   }
 }

@@ -1,7 +1,20 @@
 import type { Species } from '../data/types';
 import type { FishPose } from '../render/fish/renderFish';
 import { clamp, lerp, TAU, type Vec } from '../util/math';
+import type { Flake } from './food';
 import { alignment, arrive, type Bounds, cohesion, containment, limit, separation } from './steering';
+
+/** What's happening in the tank this step, beyond the other fish. */
+export interface TankMood {
+  /** Food in the water. */
+  food: readonly Flake[];
+  /** 1 = daytime activity, lower = resting at night (spec v1.2 §3). */
+  activity: number;
+  /** How far into the night it is, 0..1, for species that migrate up at night. */
+  night?: number;
+}
+
+const CALM: TankMood = { food: [], activity: 1 };
 
 /** Everything a fish knows about its surroundings. */
 export interface TankEnv {
@@ -25,7 +38,7 @@ export interface School {
  */
 export class FishAgent {
   readonly length: number;
-  /** Depth: 0.85 (far) .. 1.1 (near). Scales size and sets draw order. */
+  /** Depth: 0.7 (far) .. 1.1 (near). Scales size and sets draw order. */
   readonly z: number;
   pos: Vec;
   vel: Vec;
@@ -47,6 +60,12 @@ export class FishAgent {
   private pitch = 0;
   private prev: FishPose;
   private cur: FishPose;
+  /** How much it's resting for the night, 0..1. */
+  private rest = 0;
+  /** How far into the night it is (for migrating species), 0..1. */
+  private night = 0;
+  /** The flake it's going for, if any. */
+  private meal: Flake | null = null;
 
   constructor(
     readonly species: Species,
@@ -55,7 +74,7 @@ export class FishAgent {
     /** Start somewhere specific (e.g. swimming in from off-screen) instead of at random. */
     spawn?: { x: number; y: number; facing: 1 | -1 },
   ) {
-    this.z = lerp(0.85, 1.1, rng());
+    this.z = lerp(0.7, 1.1, rng());
     this.length = species.displayLength * this.z;
     const [lo, hi] = species.look.swim.speed;
     this.cruise = lerp(lo, hi, rng()) * this.length;
@@ -94,14 +113,39 @@ export class FishAgent {
     return this.species.look.swim.behaviour;
   }
 
-  update(dt: number, env: TankEnv, all: readonly FishAgent[]): void {
+  /** Whether it's chasing food right now. */
+  get feeding(): boolean {
+    return this.meal !== null;
+  }
+
+  update(dt: number, env: TankEnv, all: readonly FishAgent[], mood: TankMood = CALM): void {
     const rng = this.rng;
     const swim = this.species.look.swim;
     this.turnCooldown = Math.max(0, this.turnCooldown - dt);
     this.burst = Math.max(0, this.burst - dt);
+    // Food in the water wakes everyone up.
+    this.rest = mood.food.length > 0 ? 0 : 1 - mood.activity;
+    this.night = mood.night ?? 0;
+
+    // ---- food: eat what's in reach, then go for the nearest flake
+    if (this.meal && this.meal.eaten) this.meal = null;
+    if (mood.food.length > 0) {
+      const mouth = { x: this.pos.x + this.facing * this.length * 0.45, y: this.pos.y };
+      for (const f of mood.food) {
+        if (!f.eaten && Math.hypot(f.x - mouth.x, f.y - mouth.y) < Math.max(12, this.length * 0.3) && this.canEat(f, env)) {
+          f.eaten = true;
+          if (this.meal === f) this.meal = null;
+        }
+      }
+      this.meal = this.nearestFlake(mood.food, env);
+    } else this.meal = null;
 
     // ---- choose where to go
-    if (this.school) {
+    if (this.meal) {
+      this.target = { x: this.meal.x, y: this.meal.y };
+      this.pause = 0;
+      this.retarget = lerp(1, 3, rng());
+    } else if (this.school) {
       this.school.retarget -= dt / this.school.size;
       if (this.school.retarget <= 0) {
         this.school.target = this.pickTarget(env);
@@ -114,27 +158,33 @@ export class FishAgent {
       if (this.pause > 0) {
         this.pause -= dt;
       } else if (arrived || this.retarget <= 0) {
-        const pauseChance = this.behaviour === 'bottom-dweller' ? 0.55 : this.behaviour === 'hover' ? 0.35 : 0.05;
-        if (arrived && rng() < pauseChance) this.pause = lerp(1.5, this.behaviour === 'bottom-dweller' ? 6 : 4, rng());
+        const pauseChance = this.behaviour === 'bottom-dweller' ? 0.55 : this.behaviour === 'hover' || this.behaviour === 'drift' ? 0.35 : 0.05;
+        // Resting fish stop more often, and for longer.
+        if (arrived && rng() < lerp(pauseChance, Math.max(pauseChance, 0.6), this.rest)) {
+          this.pause = lerp(1.5, this.behaviour === 'bottom-dweller' ? 6 : 4, rng()) * (1 + 1.5 * this.rest);
+        }
         this.target = this.pickTarget(env);
         this.retarget = lerp(6, 14, rng());
       }
       if (this.behaviour === 'darting' && this.burst <= 0 && rng() < dt * 0.08) this.burst = 0.6;
     }
 
-    const speedNow = this.pause > 0 ? 0 : this.cruise * (this.burst > 0 ? 2.2 : 1);
-    const maxSpeed = this.cruise * (this.burst > 0 ? 2.4 : 1.25);
+    // Slower at night; quicker when there's food.
+    const pace = this.meal ? 1.5 : lerp(1, 0.45, this.rest);
+    const speedNow = this.pause > 0 ? 0 : this.cruise * pace * (this.burst > 0 ? 2.2 : 1);
+    const maxSpeed = this.cruise * pace * (this.burst > 0 ? 2.4 : 1.25);
     const maxAcc = maxSpeed * (this.burst > 0 ? 3 : 1.1);
 
     // ---- steering forces
     let ax = 0;
     let ay = 0;
     const seekF = arrive(this.pos, this.vel, this.target, speedNow, this.length * 2);
-    const seekW = this.school ? 0.5 : 1;
+    const seekW = this.school && !this.meal ? 0.5 : 1;
     ax += seekF.x * seekW;
     ay += seekF.y * seekW;
 
-    const contain = containment(this.pos, this.boundsFor(env), 140);
+    // Food may be outside the usual depth band: then only the tank's walls count.
+    const contain = containment(this.pos, this.meal ? env.bounds : this.boundsFor(env), 140);
     ax += contain.x * maxSpeed * 3;
     ay += contain.y * maxSpeed * 3;
 
@@ -159,7 +209,7 @@ export class FishAgent {
     ax += sep.x * maxSpeed * 1;
     ay += sep.y * maxSpeed * 3;
 
-    if (this.school && school.length) {
+    if (this.school && school.length && !this.meal) {
       const coh = cohesion(this.pos, school);
       ax += coh.x * 0.9;
       ay += coh.y * 0.9;
@@ -245,10 +295,52 @@ export class FishAgent {
     };
   }
 
-  /** The vertical range this species likes, in world y. */
+  /**
+   * The vertical range this species likes, in world y. At night free
+   * swimmers sink into the lower part of it.
+   */
   private depthBand(b: Bounds): [number, number] {
-    const [d0, d1] = this.species.look.swim.depth;
+    let [d0, d1] = this.species.look.swim.depth;
+    const b2 = this.behaviour;
+    // Diel vertical migration: up toward the surface at night.
+    if (this.species.look.swim.migrates && this.night > 0) {
+      d0 = lerp(d0, 0.05, this.night);
+      d1 = lerp(d1, 0.4, this.night);
+    }
+    if (this.rest > 0 && b2 !== 'bottom-dweller' && b2 !== 'hover') {
+      const sink = this.rest * 0.6;
+      d0 = lerp(d0, (d0 + d1) / 2, sink);
+      d1 = lerp(d1, Math.max(d1, 0.9), sink * 0.5);
+    }
     return [lerp(b.top, b.bottom, d0), lerp(b.top, b.bottom, d1)];
+  }
+
+  /** Bottom-dwellers eat off the floor; everyone else catches flakes as they sink. */
+  private canEat(f: Flake, env: TankEnv): boolean {
+    if (this.behaviour === 'bottom-dweller') return f.y > env.bounds.bottom - 40;
+    if (f.landed) return false;
+    // Fish that stay near home (clownfish at the anemone) only take food that comes close to it.
+    if (this.behaviour === 'hover') {
+      const home = env.home ?? this.pos;
+      return Math.hypot(f.x - home.x, f.y - home.y) < 380;
+    }
+    return true;
+  }
+
+  private nearestFlake(food: readonly Flake[], env: TankEnv): Flake | null {
+    let best: Flake | null = null;
+    let bestD = Infinity;
+    for (const f of food) {
+      if (f.eaten || !this.canEat(f, env)) continue;
+      // Don't chase flakes still above the top of the tank's swimming area.
+      if (f.y < env.bounds.top - 40) continue;
+      const d = Math.hypot(f.x - this.pos.x, f.y - this.pos.y);
+      if (d < bestD) {
+        bestD = d;
+        best = f;
+      }
+    }
+    return best;
   }
 
   /** Bounds narrowed to the species' depth band (soft: containment pushes back). */
@@ -266,6 +358,9 @@ export class FishAgent {
       case 'hover':
         if (env.home) return { x: env.home.x + lerp(-230, 230, rng()), y: env.home.y + lerp(-110, 30, rng()) };
         return { x: this.pos.x + lerp(-250, 250, rng()), y };
+      case 'drift':
+        // Short, lazy wanders in any direction.
+        return { x: clamp(this.pos.x + lerp(-320, 320, rng()), b.left + 80, b.right - 80), y };
       case 'bottom-dweller':
         return { x: clamp(this.pos.x + lerp(-350, 350, rng()), b.left + 50, b.right - 50), y: lerp(bottom - 20, bottom, rng()) };
       default: {

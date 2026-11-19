@@ -170,6 +170,7 @@ export class GodMode {
       },
     });
     rows.push({ kind: 'button', label: 'Next fish arrives now', run: () => g.forceArrival() });
+    rows.push({ kind: 'button', label: 'Start a close-up', run: () => (h.scene().startCloseup() ? this.close() : this.note('No fish to film')) });
     rows.push({
       kind: 'button',
       label: 'Show an arrival message',

@@ -1,4 +1,8 @@
 import { defineConfig, type Plugin } from 'vite';
+import { buildInfo } from './scripts/build-info.mjs';
+
+/** App version and the commit it was built from, shown in the app. */
+const info = buildInfo();
 
 /**
  * webOS loads the app from the file system, and older webOS Chromium builds
@@ -21,6 +25,10 @@ function classicScript(): Plugin {
 
 export default defineConfig({
   base: './',
+  define: {
+    __APP_VERSION__: JSON.stringify(info.version),
+    __APP_COMMIT__: JSON.stringify(info.commit),
+  },
   plugins: [classicScript()],
   build: {
     target: 'es2017',

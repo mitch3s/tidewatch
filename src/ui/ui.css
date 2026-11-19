@@ -32,6 +32,12 @@
   font-weight: 650;
   letter-spacing: 0.01em;
 }
+.tw-brand .tw-version {
+  font-size: 22px;
+  font-weight: 500;
+  opacity: 0.6;
+  vertical-align: middle;
+}
 .tw-brand p {
   margin: 6px 0 0;
   font-size: 28px;

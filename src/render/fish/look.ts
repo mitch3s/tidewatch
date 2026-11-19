@@ -148,7 +148,8 @@ export interface Eye {
   ring?: string;
 }
 
-export type SwimBehaviour = 'schooling' | 'bottom-dweller' | 'cruiser' | 'hover' | 'darting';
+/** `drift`: slow, wandering anywhere, never in a hurry (jellies, deep-sea cephalopods). */
+export type SwimBehaviour = 'schooling' | 'bottom-dweller' | 'cruiser' | 'hover' | 'darting' | 'drift';
 
 export interface Swim {
   /** Cruising speed range, in body lengths per second. */
@@ -160,7 +161,70 @@ export interface Swim {
   /** Preferred depth band, 0 = surface, 1 = bottom. */
   depth: [number, number];
   behaviour: SwimBehaviour;
+  /**
+   * Rises toward the surface at night and sinks back by day (diel vertical
+   * migration, e.g. lanternfish). Shifts the depth band up at night.
+   */
+  migrates?: boolean;
 }
+
+/** Light-producing spots (photophores), drawn as bright dots that glow in the dark. */
+export interface Glow {
+  /** Spot positions [u, v] on the body. */
+  spots: Array<[number, number]>;
+  /** Dot radius in body lengths. */
+  size: number;
+  color: string;
+  /** Halo colour as "r,g,b" (drawn additively in the tank, gently pulsing). */
+  halo: string;
+  /** Light travels from spot to spot instead of all glowing together (Atolla's alarm display). */
+  chase?: boolean;
+}
+
+/** An anglerfish's fishing lure: a stalk from the head with a glowing bulb. */
+export interface Lure {
+  /** Where the stalk starts [u, v]. */
+  at: [number, number];
+  /** Stalk length in body lengths. */
+  length: number;
+  color: string;
+  /** Bulb colour, and halo colour as "r,g,b". */
+  bulb: string;
+  halo: string;
+}
+
+/** A jellyfish: a pulsing bell with hanging tentacles. Body length = bell diameter. */
+export interface JellyForm {
+  kind: 'jelly';
+  /** Bell height as a fraction of its width. */
+  height: number;
+  bell: string;
+  /** Darker inner colour (stomach) and the bell's rim. */
+  inner: string;
+  rim: string;
+  /** Number of scalloped lobes on the rim. */
+  lappets: number;
+  tentacles: { count: number; length: number; color: string };
+  /** One much longer trailing tentacle (Atolla), as a multiple of `tentacles.length`. */
+  trailing?: number;
+}
+
+/**
+ * A deep-sea cephalopod seen side-on: a rounded mantle with two fins, eyes,
+ * and arms joined by a web that opens and closes like an umbrella.
+ * Body length = mantle plus arms.
+ */
+export interface CephalopodForm {
+  kind: 'cephalopod';
+  mantle: { width: number; height: number; color: string; belly: string };
+  /** Fins on the mantle: size, and whether they're big ear-like flaps (dumbo). */
+  fins: { size: number; color: string; ears?: boolean };
+  web: { length: number; color: string; arms: number; armColor: string };
+  eyeColor: string;
+  eyeSize: number;
+}
+
+export type CreatureForm = JellyForm | CephalopodForm;
 
 export interface FishLook {
   body: BodyShape;
@@ -174,5 +238,14 @@ export interface FishLook {
   mouth?: { length: number; slope: number };
   /** Whisker-like barbels at the mouth: how many, and their length. */
   barbels?: { count: number; length: number; color?: string };
+  /** Glowing photophores (deep-sea species). */
+  glow?: Glow;
+  /** Anglerfish lure. */
+  lure?: Lure;
+  /**
+   * Not a fish: drawn by the creature renderer instead (body, fins, pattern
+   * and eye are then ignored, apart from what sizing needs).
+   */
+  creature?: CreatureForm;
   swim: Swim;
 }

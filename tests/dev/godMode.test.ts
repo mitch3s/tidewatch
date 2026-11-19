@@ -92,7 +92,7 @@ describe('save presets', () => {
   it('"everything collected" collects everything', () => {
     const s = PRESETS.find((p) => p.id === 'all')!.create(ALL_SPECIES, createRng(1));
     expect(Object.values(s.species).every((p) => p.state === 'collected')).toBe(true);
-    expect(s.unlockedBiomes).toEqual(['reef', 'amazon']);
+    expect(s.unlockedBiomes).toEqual(['reef', 'amazon', 'deep']);
   });
 
   it('"reef nearly done" leaves only the rare reef visitor', () => {

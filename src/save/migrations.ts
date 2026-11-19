@@ -8,6 +8,8 @@ import {
   type RotationMinutes,
   type SaveState,
   SAVE_VERSION,
+  SOUND_LEVELS,
+  type SoundLevel,
   type SpeciesProgress,
   VISITOR_DELAY_MS,
 } from './schema';
@@ -65,6 +67,8 @@ export function migrate(raw: unknown, roster: readonly Species[], rng: () => num
         ? (settings.rotationMin as RotationMinutes)
         : base.settings.rotationMin,
       dayNight: typeof settings.dayNight === 'boolean' ? settings.dayNight : base.settings.dayNight,
+      closeups: typeof settings.closeups === 'boolean' ? settings.closeups : base.settings.closeups,
+      sound: SOUND_LEVELS.includes(settings.sound as SoundLevel) ? (settings.sound as SoundLevel) : base.settings.sound,
     },
   };
 }

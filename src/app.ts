@@ -1,4 +1,6 @@
+import { Ambience } from './audio/ambience';
 import { BIOMES } from './data/biomes';
+import { APP_VERSION } from './version';
 import { ALL_SPECIES, getSpecies } from './data/species';
 import { BIOME_ORDER } from './data/progression';
 import type { BiomeId, Species } from './data/types';
@@ -72,6 +74,8 @@ export class App implements GodHost {
   private codex: CodexScreen | null = null;
   private lastInputAt = performance.now();
   private time = 0;
+  /** Ambient sound (spec v1.2 §5). */
+  private readonly ambience = new Ambience();
 
   constructor(
     readonly stage: Stage,
@@ -103,12 +107,19 @@ export class App implements GodHost {
       if (flags?.god) this.god.open();
     }
     if (flags) this.applyDevFlags(flags);
-    new InputManager().on((action) => this.onAction(action));
+    new InputManager().on((action) => {
+      // Sound may only start after a key press (TV and browser rules).
+      this.ambience.unlock();
+      this.onAction(action);
+    });
     const pointer = new PointerInput({ canvas: stage.canvas, toStage: (x, y) => stage.clientToStage(x, y) });
     pointer.on((e) => {
+      if (e.kind === 'down') this.ambience.unlock();
       this.idle.poke(performance.now());
       this.lastInputAt = performance.now();
-      if (e.kind === 'down' && !e.overUi && this.scene().hitsVisitor(e.x, e.y)) this.tryCatch();
+      if (e.kind !== 'down' || e.overUi || this.codex || this.god?.isOpen) return;
+      if (this.scene().hitsVisitor(e.x, e.y)) this.tryCatch();
+      else this.scene().feed(e.x);
     });
 
     platform.onVisibilityChange((visible) => {
@@ -121,6 +132,7 @@ export class App implements GodHost {
 
   start(): void {
     this.platform.keepAwake();
+    this.ambience.setLevel(this.game.state.settings.sound);
     this.stage.start({
       update: (dt) => this.update(dt),
       render: (ctx, alpha, time) => this.render(ctx, alpha, time),
@@ -135,7 +147,12 @@ export class App implements GodHost {
     const gameMs = this.clock.advance(realMs);
     this.game.tick(gameMs, realMs, { biome: this.current, visitorsAllowed: this.switching === null && this.codex === null });
 
-    for (const s of this.scenes.values()) s.update(dt);
+    for (const [biome, s] of this.scenes) {
+      s.closeupsAllowed = biome === this.current && this.switching === null && this.codex === null;
+      s.update(dt);
+    }
+    this.ambience.setNight(this.scene().night);
+    this.ambience.setDucked(this.codex !== null);
     this.idle.tick(performance.now());
     if (this.idleDisabled) this.ui.setIdle(false);
     this.god?.update(dt);
@@ -199,6 +216,11 @@ export class App implements GodHost {
       s = new TankScene(BIOMES[biome], fish, {
         hour: () => this.hourOverride ?? this.opts.hour ?? deviceHour(),
         dayNight: () => this.game.state.settings.dayNight,
+        closeups: () => this.game.state.settings.closeups,
+        // Only the tank on screen makes bubble sounds.
+        onBubble: (r, x) => {
+          if (biome === this.current && this.switching === null) this.ambience.bubble(Math.min(1, r / 7), x / 960 - 1);
+        },
         debug: this.debugView,
       });
       s.prepare(this.stage.pixelScale);
@@ -219,6 +241,7 @@ export class App implements GodHost {
   /** Throw away the scenes and rebuild them from the saved state (god mode). */
   rebuildScenes(): void {
     this.scenes.clear();
+    this.ambience.setLevel(this.game.state.settings.sound);
     if (!this.game.state.unlockedBiomes.includes(this.currentBiome)) this.currentBiome = this.game.state.unlockedBiomes[0]!;
     this.scene();
     this.updateBrand();
@@ -268,6 +291,10 @@ export class App implements GodHost {
         },
         setRotation: (min: RotationMinutes) => this.game.setSettings({ rotationMin: min }),
         setDayNight: (on: boolean) => this.game.setSettings({ dayNight: on }),
+        setSettings: (patch) => {
+          this.game.setSettings(patch);
+          if (patch.sound) this.ambience.setLevel(patch.sound);
+        },
         resetProgress: () => {
           this.game.replaceState(createInitialState(ALL_SPECIES, createRng(Date.now())));
           this.rebuildScenes();
@@ -314,7 +341,7 @@ export class App implements GodHost {
     if (decision === 'swallow') return;
     switch (action) {
       case 'select':
-        this.tryCatch();
+        if (!this.tryCatch()) this.feed();
         break;
       case 'left':
         this.switchTank(-1);
@@ -331,9 +358,17 @@ export class App implements GodHost {
     }
   }
 
-  private tryCatch(): void {
+  /** Catch the rare visitor in this tank, if there is one. */
+  private tryCatch(): boolean {
     const v = this.game.activeVisitor;
-    if (v && v.biome === this.current) this.game.catchVisitor();
+    if (!v || v.biome !== this.current) return false;
+    this.game.catchVisitor();
+    return true;
+  }
+
+  /** Sprinkle food somewhere in the middle part of the tank (spec v1.2 §2). */
+  private feed(): void {
+    this.scene().feed(480 + Math.random() * 960);
   }
 
   // ---------------------------------------------------------------- game events
@@ -401,6 +436,7 @@ export class App implements GodHost {
     if (flags.unlockAll) for (const b of BIOME_ORDER) this.game.unlockBiome(b);
     if (flags.collectAll) for (const s of ALL_SPECIES) this.game.collect(s.id);
     if (flags.arrivalNow) this.game.forceArrival();
+    if (flags.closeupNow) requestAnimationFrame(() => this.scene().startCloseup());
     if (flags.visitorNow) {
       // Wait for the first frame so the scene exists, then summon.
       requestAnimationFrame(() => {
@@ -413,7 +449,7 @@ export class App implements GodHost {
 
   private updateBrand(): void {
     const multi = this.game.state.unlockedBiomes.length > 1;
-    this.brand.innerHTML = `<h1>Tidewatch</h1><p>${escapeHtml(BIOMES[this.current].name)}${multi ? ' · ◀ ▶ switch tank' : ''}</p>`;
+    this.brand.innerHTML = `<h1>Tidewatch <span class="tw-version">v${APP_VERSION}</span></h1><p>${escapeHtml(BIOMES[this.current].name)}${multi ? ' · ◀ ▶ switch tank' : ''} · OK feed</p>`;
   }
 
   keepAwakeStatus(): string {

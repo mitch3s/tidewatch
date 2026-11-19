@@ -16,6 +16,8 @@ export interface DevFlags {
   debug: boolean;
   /** `?god`: open god mode at startup. */
   god: boolean;
+  /** `?closeup=now`: start a close-up straight away. */
+  closeupNow: boolean;
 }
 
 export function parseDevFlags(search: string): DevFlags {
@@ -30,5 +32,6 @@ export function parseDevFlags(search: string): DevFlags {
     reset: p.has('reset'),
     debug: p.has('debug'),
     god: p.has('god'),
+    closeupNow: p.get('closeup') === 'now',
   };
 }

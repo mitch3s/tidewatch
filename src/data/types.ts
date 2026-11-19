@@ -2,7 +2,7 @@ import type { FishLook } from '../render/fish/look';
 import type { Codex } from './codex';
 
 export type Rarity = 'common' | 'uncommon' | 'rare';
-export type BiomeId = 'reef' | 'amazon';
+export type BiomeId = 'reef' | 'amazon' | 'deep';
 
 /** One species: how it looks and swims, and what the codex says about it. */
 export interface Species {

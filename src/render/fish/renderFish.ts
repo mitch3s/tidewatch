@@ -1,4 +1,5 @@
-import { makeBody, resolveBody, type ResolvedBody } from './body';
+import { makeBody, resolveBody, type Body, type ResolvedBody } from './body';
+import { creatureGlowPoints, renderCreature } from './creature';
 import { finGeometry, type FinFrame } from './fins';
 import type { Fin, FishLook } from './look';
 import { drawPattern } from './patterns';
@@ -43,6 +44,9 @@ export interface RenderOptions {
   silhouette?: string;
 }
 
+/** Colour for fine dark details (fin rays): deep water blue instead of black. */
+const SHADOW_INK = '#06182a';
+
 const resolved = new WeakMap<FishLook, ResolvedBody>();
 function bodyShapeOf(look: FishLook): ResolvedBody {
   let r = resolved.get(look);
@@ -69,6 +73,10 @@ export function renderFish(
   opts: RenderOptions = {},
 ): void {
   if (Math.abs(pose.facing) < 0.01 || pose.length <= 0) return;
+  if (look.creature) {
+    renderCreature(ctx, look, pose, opts);
+    return;
+  }
   const shape = bodyShapeOf(look);
   const turn = pose.turn ?? 0;
   const body = makeBody(shape, pose.phase, pose.flex, turnYaw(turn));
@@ -109,8 +117,8 @@ export function renderFish(
     ctx.save();
     ctx.clip(g.path);
     if (detailed && fin.rays !== false) {
-      ctx.globalAlpha = 0.16;
-      ctx.strokeStyle = '#000';
+      ctx.globalAlpha = 0.2;
+      ctx.strokeStyle = SHADOW_INK;
       ctx.lineWidth = px;
       ctx.beginPath();
       for (const [a, b] of g.rays) {
@@ -152,19 +160,33 @@ export function renderFish(
     ctx.clip(bodyPath);
     for (const layer of look.pattern) drawPattern(ctx, layer, body, px);
 
-    // Soft lighting from above: a highlight on the back, shadow under the belly.
+    // Lighting from the surface: a soft sheen just below the back, and a
+    // shadow under the belly tinted by the water rather than black.
     const shade = ctx.createLinearGradient(0, -shape.upper, 0, shape.lower);
-    shade.addColorStop(0, 'rgba(255,255,255,0.20)');
-    shade.addColorStop(0.35, 'rgba(255,255,255,0)');
-    shade.addColorStop(0.65, 'rgba(0,0,0,0)');
-    shade.addColorStop(1, 'rgba(0,0,0,0.30)');
+    shade.addColorStop(0, 'rgba(255,255,255,0.10)');
+    shade.addColorStop(0.16, 'rgba(255,255,255,0.36)');
+    shade.addColorStop(0.36, 'rgba(255,255,255,0.04)');
+    shade.addColorStop(0.55, 'rgba(255,255,255,0)');
+    shade.addColorStop(0.62, 'rgba(4,22,44,0)');
+    shade.addColorStop(1, 'rgba(4,22,44,0.42)');
     ctx.fillStyle = shade;
     ctx.fill(bodyPath);
+
+    // Rim light along the top edge (stroked inside the body clip, so only
+    // the inner half of the line shows).
+    if (detailed && fold < 0.95) {
+      const rim = ctx.createLinearGradient(0, -shape.upper, 0, 0);
+      rim.addColorStop(0, `rgba(235,250,255,${(0.55 * (1 - fold)).toFixed(3)})`);
+      rim.addColorStop(1, 'rgba(235,250,255,0)');
+      ctx.strokeStyle = rim;
+      ctx.lineWidth = 5 * px;
+      ctx.stroke(rimPath);
+    }
 
     // Gill cover line.
     const gill = look.gill === undefined ? 0.22 : look.gill;
     if (detailed && gill !== null) {
-      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.strokeStyle = 'rgba(4,22,44,0.22)';
       ctx.lineWidth = 1.5 * px;
       ctx.beginPath();
       for (let i = 0; i <= 12; i++) {
@@ -185,9 +207,10 @@ export function renderFish(
       }
     }
     // A faint darker rim keeps the fish readable against any background.
-    // (Faded out mid-turn, when the outline crosses over the body.)
+    // Deep water blue rather than black, so it doesn't read as a cartoon
+    // outline. (Faded out mid-turn, when the outline crosses over the body.)
     if (fold < 0.95) {
-      ctx.strokeStyle = `rgba(0,0,0,${(0.25 * (1 - fold)).toFixed(3)})`;
+      ctx.strokeStyle = `rgba(4,22,44,${(0.2 * (1 - fold)).toFixed(3)})`;
       ctx.lineWidth = 1.2 * px;
       ctx.stroke(rimPath);
     }
@@ -256,5 +279,83 @@ export function renderFish(
   for (const fin of look.fins) if (fin.kind === 'pelvic') drawFin(fin);
   for (const fin of look.fins) if (fin.kind === 'pectoral') drawFin(fin);
 
+  if (!sil) {
+    // Photophores: small bright dots (the tank adds a glowing halo).
+    if (look.glow) {
+      ctx.fillStyle = look.glow.color;
+      for (const [u, v] of look.glow.spots) {
+        const q = body.point(u, v);
+        ctx.beginPath();
+        ctx.arc(q.x, q.y, look.glow.size, 0, TAU);
+        ctx.fill();
+      }
+    }
+  }
+  // Anglerfish lure: a thin stalk arching forward over the head, ending in a bulb.
+  if (look.lure) {
+    const { stalk, bulb } = lureGeometry(look, body, pose);
+    ctx.strokeStyle = sil ?? look.lure.color;
+    ctx.lineWidth = Math.max(1.5 * px, 0.012);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(stalk[0].x, stalk[0].y);
+    ctx.quadraticCurveTo(stalk[1].x, stalk[1].y, bulb.x, bulb.y);
+    ctx.stroke();
+    ctx.fillStyle = sil ?? look.lure.bulb;
+    ctx.beginPath();
+    ctx.arc(bulb.x, bulb.y, 0.035, 0, TAU);
+    ctx.fill();
+  }
+
   ctx.restore();
+}
+
+/** The lure's stalk (root and control point) and bulb, in body units. */
+function lureGeometry(look: FishLook, body: Body, pose: FishPose) {
+  const l = look.lure!;
+  const root = body.point(l.at[0], l.at[1]);
+  // Sways gently with the fin rhythm.
+  const sway = Math.sin(pose.finPhase * 0.5) * 0.04;
+  const ctrl = { x: root.x + l.length * 0.35, y: root.y - l.length * 0.75 };
+  const bulb = { x: root.x + l.length * 0.75 + sway, y: root.y - l.length * 0.3 + sway * 0.5 };
+  return { stalk: [root, ctrl] as const, bulb };
+}
+
+/**
+ * Where an animal's lights are, in canvas coordinates, with each halo's
+ * colour ("r,g,b") and radius: photophores, an anglerfish's lure, a
+ * jelly's rim, a vampire squid's arm tips. Used by the tank to draw glowing
+ * halos live over the cached sprite.
+ */
+export function glowPoints(look: FishLook, pose: FishPose): Array<{ x: number; y: number; rgb: string; r: number; chase?: number }> {
+  const out: Array<{ x: number; y: number; rgb: string; r: number; chase?: number }> = [];
+  if (!look.glow && !look.lure) return out;
+  if (look.creature) {
+    if (look.glow) {
+      const pts = creatureGlowPoints(look.creature, look, pose);
+      pts.forEach(([x, y], i) => out.push({ x, y, rgb: look.glow!.halo, r: pose.length * look.glow!.size * 4, chase: look.glow!.chase ? i / pts.length : undefined }));
+    }
+    return out;
+  }
+  const body = makeBody(bodyShapeOf(look), pose.phase, pose.flex, turnYaw(pose.turn ?? 0));
+  const a = pose.facing < 0 ? -pose.pitch : pose.pitch;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  const toCanvas = (p: { x: number; y: number }) => {
+    const lx = p.x * pose.length * pose.facing;
+    const ly = p.y * pose.length;
+    return { x: pose.x + lx * c - ly * s, y: pose.y + lx * s + ly * c };
+  };
+  if (look.glow) {
+    for (const [u, v] of look.glow.spots) {
+      const q = toCanvas(body.point(u, v));
+      out.push({ ...q, rgb: look.glow.halo, r: pose.length * look.glow.size * 5 });
+    }
+  }
+  if (look.lure) {
+    const q = toCanvas(lureGeometry(look, body, pose).bulb);
+    // Wide enough to light up the anglerfish's own face.
+    out.push({ ...q, rgb: look.lure.halo, r: pose.length * 0.5 });
+  }
+  return out;
 }

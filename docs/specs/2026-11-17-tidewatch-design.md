@@ -43,6 +43,17 @@ Third-party webOS apps cannot replace the TV's system screensaver, so this is a 
 | Amazon river | Zebra pleco | *Hypancistrus zebra* | Rare visitor |
 | Amazon river | Silver arowana | *Osteoglossum bicirrhosum* | Rare visitor |
 
+**Added in v1.3** (deep sea tank, [spec](2026-11-18-tidewatch-v1.3-deep-sea.md)):
+
+| Biome | Species | Scientific name | Rarity |
+|---|---|---|---|
+| Deep sea | Atolla jellyfish | *Atolla wyvillei* | Common |
+| Deep sea | Spotted lanternfish | *Myctophum punctatum* | Common |
+| Deep sea | Lovely hatchetfish | *Argyropelecus aculeatus* | Common |
+| Deep sea | Vampire squid | *Vampyroteuthis infernalis* | Uncommon |
+| Deep sea | Dumbo octopus | *Grimpoteuthis* (genus) | Uncommon |
+| Deep sea | Humpback anglerfish | *Melanocetus johnsonii* | Rare visitor |
+
 All codex facts are checked against a cited source (FishBase as the primary source, plus others where needed). Each entry stores its source URLs.
 
 ## 4. Game mechanics
@@ -275,7 +286,7 @@ Three levels, from fastest to most realistic. Almost all development happens on 
 - **Fact accuracy:** every fact needs a source (checked by a test). The discus entry is the blue discus, *S. aequifasciatus*. Where sources disagree (e.g. the zebra pleco's IUCN category), the codex says less rather than picking one.
 
 ## 12. Out of scope for v1 / future ideas
-- More biomes: deep sea, African rift lakes (Malawi/Tanganyika), Asian rivers.
+- More biomes: ~~deep sea~~ (added in v1.3), African rift lakes (Malawi/Tanganyika), Asian rivers.
 - Optional ambient sound.
 - Legendary or mythical species (if desired later).
 - Tank decoration.
