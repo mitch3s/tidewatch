@@ -6,7 +6,12 @@ Add a line under **Unreleased** with each change that someone using the app woul
 
 ## Unreleased
 
-- Planned for 1.4: moon phases, "Moments" (rare animal behaviours to witness and record in the codex) and a collection timeline. See the [v1.4 spec](docs/specs/2026-11-19-tidewatch-v1.4-moments.md).
+Toward 1.4. [Spec](docs/specs/2026-11-19-tidewatch-v1.4-moments.md)
+
+- Moonlight follows the real moon: at night the reef and Amazon tanks get silver rays and a faint net of light on the floor, bright under a full moon and gone on a new moon. Before, every night had the same moonlight.
+- The codex's Settings tab shows tonight's moon phase.
+- `?moon=0.5` previews a moon phase; god mode can set it too.
+- Still to come in 1.4: moments (rare animal behaviours to witness and record in the codex) and a timeline.
 
 ## 1.3.0 (2026-11-19)
 

@@ -18,6 +18,7 @@ import type { CollectionState, SaveState } from '../save/schema';
 import type { KeyValueStore } from '../save/storage';
 import type { UiRoot } from '../ui/root';
 import type { Toasts } from '../ui/toast';
+import { moonIllumination, moonPhaseName } from '../util/moon';
 import { createRng } from '../util/rng';
 import { ColorSequence } from './colorSequence';
 import { FishLab } from './fishLab';
@@ -36,6 +37,8 @@ export interface GodHost {
   readonly debugView: DebugView;
   readonly current: BiomeId;
   hourOverride: number | null;
+  moonOverride: number | null;
+  moonPhase(): number;
   idleDisabled: boolean;
   debugHudOn: boolean;
   renderOverride: ((ctx: CanvasRenderingContext2D, alpha: number, time: number) => void) | null;
@@ -213,6 +216,22 @@ export class GodMode {
       get: () => h.hourOverride ?? new Date().getHours() + new Date().getMinutes() / 60,
       set: (v) => (h.hourOverride = v),
       format: (v) => `${Math.floor(v) % 24}:${String(Math.round((v % 1) * 60)).padStart(2, '0')}`,
+    });
+    rows.push({
+      kind: 'toggle',
+      label: 'Override moon phase',
+      get: () => h.moonOverride !== null,
+      set: (v) => (h.moonOverride = v ? h.moonPhase() : null),
+    });
+    rows.push({
+      kind: 'slider',
+      label: 'Moon phase',
+      min: 0,
+      max: 1,
+      step: 0.025,
+      get: () => h.moonPhase(),
+      set: (v) => (h.moonOverride = v % 1),
+      format: (v) => `${moonPhaseName(v)} (${Math.round(moonIllumination(v) * 100)}% lit)`,
     });
 
     rows.push({ kind: 'header', label: 'Tanks' });

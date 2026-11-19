@@ -57,11 +57,14 @@ if (previewTank === 'deep') {
   });
 } else {
   const hour = params.get('hour');
+  const moon = params.get('moon');
   const app = new App(stage, platform, {
     store: defaultStore(),
     flags: DEV_TOOLS ? parseDevFlags(location.search) : null,
     // `?hour=21.5` overrides the clock, to preview day/night lighting.
     hour: hour !== null && Number.isFinite(Number(hour)) ? Number(hour) : undefined,
+    // `?moon=0.5` sets the moon's phase (0 new, 0.5 full), to preview moonlight.
+    moon: moon !== null && moon !== '' && Number.isFinite(Number(moon)) ? ((Number(moon) % 1) + 1) % 1 : undefined,
   });
   app.start();
 }

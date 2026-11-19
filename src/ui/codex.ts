@@ -1,4 +1,5 @@
 import { BIOMES } from '../data/biomes';
+import { moonIconSvg, moonPhaseName } from '../util/moon';
 import { APP_COMMIT, APP_VERSION } from '../version';
 import { DEV_TOOLS } from '../dev/enabled';
 import { ALL_SPECIES, getSpecies } from '../data/species';
@@ -24,6 +25,8 @@ export interface CodexHost {
   /** Close the app (only offered on the TV). */
   exitApp(): void;
   readonly canExit: boolean;
+  /** Tonight's moon phase, 0 new .. 0.5 full (spec v1.4 §2). */
+  moonPhase(): number;
   /** Called when the codex closes itself (Back from the grid). */
   onClose(): void;
   /**
@@ -323,6 +326,7 @@ export class CodexScreen {
       <div class="tw-setting tw-danger${this.confirmReset !== null ? ' tw-armed' : ''}" data-focus data-setting="reset"><span>Reset progress</span><b>${reset}</b></div>
       ${DEV_TOOLS && this.host.openGodMode ? `<div class="tw-setting" data-focus data-setting="god"><span>Open god mode</span><b>Development build</b></div>` : ''}
       ${this.host.canExit ? `<div class="tw-setting${this.confirmExit !== null ? ' tw-armed' : ''}" data-focus data-setting="exit"><span>Exit Tidewatch</span><b>${exit}</b></div>` : ''}
+      <p class="tw-moon">${moonIconSvg(this.host.moonPhase())}<span>Tonight's moon: <b>${moonPhaseName(this.host.moonPhase())}</b>${s.dayNight ? '' : ' (moonlight needs day and night lighting on)'}</span></p>
       <p class="tw-about">Fish facts come from FishBase and the other sources listed in each codex entry. Map data: Natural Earth.</p>
       <p class="tw-about tw-build">Tidewatch ${APP_VERSION} · build ${APP_COMMIT}</p>
     </div>`;

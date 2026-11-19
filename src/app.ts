@@ -23,6 +23,7 @@ import { CodexScreen } from './ui/codex';
 import { escapeHtml, UiRoot } from './ui/root';
 import { Toasts } from './ui/toast';
 import { VisitorHint } from './ui/visitorHint';
+import { moonPhase } from './util/moon';
 import { createRng } from './util/rng';
 
 /** Save at least this often while running (timers tick down constantly). */
@@ -38,6 +39,8 @@ export interface AppOptions {
   flags: DevFlags | null;
   /** Override the time of day for lighting (`?hour=`). */
   hour?: number;
+  /** Override the moon's phase, 0 new .. 0.5 full (`?moon=`). */
+  moon?: number;
 }
 
 /**
@@ -54,6 +57,8 @@ export class App implements GodHost {
   readonly debugView: DebugView = { vectors: false, bounds: false, neighbours: false };
   /** God mode: fixed time of day for lighting, or null to follow the clock. */
   hourOverride: number | null = null;
+  /** God mode: fixed moon phase, or null to follow the date. */
+  moonOverride: number | null = null;
   /** God mode: keep the UI visible instead of fading it when idle. */
   idleDisabled = false;
   /** God mode (fish lab): draw this instead of the tank. */
@@ -215,6 +220,7 @@ export class App implements GodHost {
       const fish = ALL_SPECIES.filter((sp) => sp.biome === biome && this.game.state.species[sp.id]?.state === 'collected');
       s = new TankScene(BIOMES[biome], fish, {
         hour: () => this.hourOverride ?? this.opts.hour ?? deviceHour(),
+        moonPhase: () => this.moonPhase(),
         dayNight: () => this.game.state.settings.dayNight,
         closeups: () => this.game.state.settings.closeups,
         // Only the tank on screen makes bubble sounds.
@@ -227,6 +233,11 @@ export class App implements GodHost {
       this.scenes.set(biome, s);
     }
     return s;
+  }
+
+  /** The moon's phase for lighting and the codex: god mode, then `?moon=`, then today's. */
+  moonPhase(): number {
+    return this.moonOverride ?? this.opts.moon ?? deviceMoon();
   }
 
   /** Show a tank straight away (god mode). */
@@ -302,6 +313,7 @@ export class App implements GodHost {
         },
         exitApp: () => this.platform.exitApp(),
         canExit: this.platform.name === 'webos',
+        moonPhase: () => this.moonPhase(),
         onClose: () => this.closeCodex(),
         openGodMode: this.god
           ? () => {
@@ -486,6 +498,10 @@ export class App implements GodHost {
       `canvas        ${this.stage.canvas.width}×${this.stage.canvas.height} (pixel ratio ${window.devicePixelRatio})\n` +
       `keep awake    ${this.platform.keepAwakeStatus()}`;
   }
+}
+
+function deviceMoon(): number {
+  return moonPhase(new Date());
 }
 
 function deviceHour(): number {

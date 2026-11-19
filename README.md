@@ -20,7 +20,7 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 | Amazon river | Collect 4 reef species | Neon tetra, bronze corydoras, freshwater angelfish, blue discus, zebra pleco and silver arowana (both rare visitors) |
 | Deep sea (1.3) | Collect 4 Amazon species | Atolla jellyfish, spotted lanternfish, lovely hatchetfish, vampire squid, dumbo octopus, humpback anglerfish (rare visitor) |
 
-The deep sea is almost black: no sunlight, only the animals' own glow. Lanternfish and hatchetfish rise toward the surface at night.
+At night the reef and Amazon tanks get moonlight from above, as bright as the real moon is full tonight; on a new moon the night is dark. The deep sea is almost black: no sunlight, only the animals' own glow. Lanternfish and hatchetfish rise toward the surface at night.
 
 ## Getting started
 
@@ -55,7 +55,7 @@ Open the URL Vite prints (usually http://localhost:5173) in Chrome. The app is d
 
 After 10 seconds without input the on-screen text fades out; the first key press after that only wakes it. The codex closes itself after 90 seconds without input, so nothing static stays on screen.
 
-The codex's **Settings** tab sets automatic tank switching (off, 5, 15 or 30 minutes), turns day and night lighting on or off, turns the occasional close-ups of a fish on or off, sets the ambient sound (off, quiet or normal), and can reset progress. On the TV it also has Exit.
+The codex's **Settings** tab sets automatic tank switching (off, 5, 15 or 30 minutes), turns day and night lighting on or off, turns the occasional close-ups of a fish on or off, sets the ambient sound (off, quiet or normal), shows tonight's moon, and can reset progress. On the TV it also has Exit.
 
 ### Useful URLs
 
@@ -76,6 +76,7 @@ These debug flags work in development builds only (`npm run dev` or `npm run bui
 Flags can be combined, e.g. `/?reset&visitor=now&debug`. These work in every build:
 
 - `/?hour=21.5`: preview the lighting at a time of day (otherwise it follows the clock).
+- `/?moon=0.5`: preview a moon phase, from 0 (new) through 0.5 (full) to 1 (otherwise it follows the date). Try `/?hour=0&moon=0.5`.
 - `/?tank=deep` (development builds): the deep-sea tank with its whole roster. Add `&hour=23` for the night migration.
 - `/?fish=ocellaris-clownfish`: one species large and centred, swimming in place. Add `&still` to freeze it and `&turn=0.5` to see a turn stage.
 
@@ -85,7 +86,7 @@ A developer panel for testing everything without waiting. It exists only in deve
 
 - **Open it:** press `G` on a PC, or Red, Green, Yellow, Blue on the remote within 2 seconds (keys 1, 2, 3, 4 on a PC). `?god` opens it at startup. Remotes without colour buttons (like LG's Magic Remote): codex → Settings → **Open god mode**.
 - **Use it:** ↑↓ move, ←→ adjust, OK press, Back close. The mouse works too. Buttons in red ask you to press twice.
-- **What's in it:** summon any visitor, trigger arrivals, show any message; speed up, pause or set the time of day; lock and unlock tanks; set any species to unseen, sighted or collected; debug overlays (movement, bounds, school links); a performance readout (frame rate, draw time per frame, fish count, canvas size); a stress test with up to 200 extra fish; saved progress (presets, reset, export, import).
+- **What's in it:** summon any visitor, trigger arrivals, show any message; speed up, pause or set the time of day; set the moon phase; lock and unlock tanks; set any species to unseen, sighted or collected; debug overlays (movement, bounds, school links); a performance readout (frame rate, draw time per frame, fish count, canvas size); a stress test with up to 200 extra fish; saved progress (presets, reset, export, import).
 - **Fish lab:** one species shown large with a real-size copy below. Every number and colour of its look can be adjusted live (the fish in the tank change too), then copied as JSON into `src/data/species/<id>.ts`.
 
 ## Scripts

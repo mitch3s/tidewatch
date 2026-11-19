@@ -1,7 +1,7 @@
 # Tidewatch v1.4: moments
 
 **Date:** 2026-11-19
-**Status:** Proposed.
+**Status:** Part 1 (the moon) implemented; parts 2 and 3 proposed.
 **Builds on:** [`2026-11-18-tidewatch-v1.3-deep-sea.md`](2026-11-18-tidewatch-v1.3-deep-sea.md)
 
 ## 1. Why
@@ -14,8 +14,8 @@ The release has three parts, built and committed one at a time, plus a TV test p
 
 ## 2. Part 1: the moon
 
-- The moon's phase is worked out from the date (a known new moon plus the 29.53-day synodic month). No network is needed.
-- At night, in the reef and Amazon tanks, faint moonlight comes from above: soft rays and caustics, as in daytime but dimmer, cooler and much weaker, scaled by how full the moon is. On a new moon the night is fully dark, as now.
+- The moon's phase is worked out from the date (a known new moon plus the 29.53-day average lunar month). No network is needed. Real lunar months vary, so it can be up to about half a day off, which doesn't matter for lighting.
+- Since v1.1 every night has had the same faint moonlight: silver rays at 0.4 of daylight's strength and a weak caustic net. Now that light is scaled by how much of the moon is lit: at a full moon the rays are a little stronger than before (0.55) and the caustics 0.6 of daylight's; at the quarters about half that; on a new moon there are no rays or caustics and the night is dark.
 - The deep sea is unchanged: no light reaches it.
 - Off when day/night lighting is off.
 - The codex's Settings tab shows tonight's phase as a small icon with its name, e.g. "Waxing gibbous".

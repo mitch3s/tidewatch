@@ -23,14 +23,17 @@ import { Particles } from './particles';
 import { Sparkles } from './sparkles';
 import { lerp, TAU } from '../../util/math';
 import { FLAKE_COLORS, FLAKE_REST_S } from '../../sim/food';
+import { moonIllumination, moonPhase } from '../../util/moon';
 import { createRng } from '../../util/rng';
 
 /** Parallax per layer: 0 = fixed to the screen, 1 = moves with the fish. */
 const PARALLAX = { far: 0.35, rays: 0.5, mid: 0.8, fish: 1, bubbles: 1.05, front: 1.25 } as const;
 
-/** Colour and strength of the light rays at night. */
+/** Colour of the light rays at night, and their strength under a full moon (spec v1.4 §2). */
 const MOON_RGB = '170,195,255';
-const MOONLIGHT = 0.4;
+const MOONLIGHT = 0.55;
+/** Caustics at night under a full moon, relative to daylight. */
+const MOON_CAUSTICS = 0.6;
 
 /** God-mode debug drawing, shared by all scenes. */
 export interface DebugView {
@@ -44,6 +47,8 @@ export interface DebugView {
 export interface TankSceneOptions {
   /** Time of day in hours. Defaults to the device clock. */
   hour?: () => number;
+  /** The moon's phase, 0 new .. 0.5 full .. 1. Defaults to today's. */
+  moonPhase?: () => number;
   /** Turn day/night lighting off (always daylight). */
   dayNight?: () => boolean;
   /** God-mode debug drawing. */
@@ -89,6 +94,7 @@ export class TankScene {
   /** Set by the app: whether this tank is on screen with nothing else going on. */
   closeupsAllowed = false;
   private readonly hour: () => number;
+  private readonly moonPhase: () => number;
   private readonly dayNight: () => boolean;
   private readonly debug: DebugView | undefined;
   private readonly rng: () => number;
@@ -129,6 +135,7 @@ export class TankScene {
         const d = new Date();
         return d.getHours() + d.getMinutes() / 60;
       });
+    this.moonPhase = opts.moonPhase ?? (() => moonPhase(new Date()));
     this.dayNight = opts.dayNight ?? (() => true);
     this.closeupsOn = opts.closeups ?? (() => true);
     this.closeups = new Closeups(this.rng);
@@ -222,16 +229,17 @@ export class TankScene {
       ctx.restore();
     };
 
-    // Sunlight by day, faint silver moonlight by night.
+    // Sunlight by day, faint silver moonlight by night: as bright as the moon is full.
+    const moonlight = light.moon * moonIllumination(this.moonPhase());
     const rayRgb = mixRgb(this.biome.rays, MOON_RGB, light.moon);
-    const rayStrength = light.rays + MOONLIGHT * light.moon;
+    const rayStrength = light.rays + MOONLIGHT * moonlight;
 
     withCamera(PARALLAX.far, () => this.far.draw(ctx));
     if (!this.biome.lightless) withCamera(PARALLAX.rays, () => this.rays.draw(ctx, time, rayRgb, rayStrength));
     withCamera(PARALLAX.mid, () => {
       this.mid.draw(ctx);
       // Moonlight throws a faint net too.
-      this.caustics.draw(ctx, time, light.rays + 0.5 * light.moon);
+      this.caustics.draw(ctx, time, light.rays + MOON_CAUSTICS * moonlight);
       this.particles.draw(ctx);
       this.scenery.drawLive?.(ctx, time);
     });
