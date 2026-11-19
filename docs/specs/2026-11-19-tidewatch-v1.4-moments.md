@@ -1,7 +1,7 @@
 # Tidewatch v1.4: moments
 
 **Date:** 2026-11-19
-**Status:** Parts 1 (the moon) and 2 (moments, with the first four) implemented; part 3 proposed.
+**Status:** Parts 1 (the moon) and 2 (moments, with the first four) released in 1.4.0 (19 November 2026), awaiting a TV test; part 3 in progress.
 **Builds on:** [`2026-11-18-tidewatch-v1.3-deep-sea.md`](2026-11-18-tidewatch-v1.3-deep-sea.md)
 
 ## 1. Why
