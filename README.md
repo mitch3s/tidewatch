@@ -20,6 +20,8 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 | Amazon river | Collect 4 reef species | Neon tetra, bronze corydoras, freshwater angelfish, blue discus, zebra pleco and silver arowana (both rare visitors) |
 | Deep sea (1.3) | Collect 4 Amazon species | Atolla jellyfish, spotted lanternfish, lovely hatchetfish, vampire squid, dumbo octopus, humpback anglerfish (rare visitor) |
 
+Now and then an animal does something special: a **moment**, such as a mandarin pair rising to spawn at dusk or a corydoras darting up for a gulp of air. Some only happen at certain times of day. Once you've watched one to the end, the codex records it on that animal's page.
+
 At night the reef and Amazon tanks get moonlight from above, as bright as the real moon is full tonight; on a new moon the night is dark. The deep sea is almost black: no sunlight, only the animals' own glow. Lanternfish and hatchetfish rise toward the surface at night.
 
 ## Getting started
@@ -72,6 +74,7 @@ These debug flags work in development builds only (`npm run dev` or `npm run bui
 | `/?debug` | Show the timers and frame rate |
 | `/?god` | Open god mode at startup |
 | `/?closeup=now` | Start a close-up on a fish straight away |
+| `/?moment=corydoras-air` | Start a moment straight away, switching to its tank (ids in `src/data/moments.ts`) |
 
 Flags can be combined, e.g. `/?reset&visitor=now&debug`. These work in every build:
 
@@ -86,7 +89,7 @@ A developer panel for testing everything without waiting. It exists only in deve
 
 - **Open it:** press `G` on a PC, or Red, Green, Yellow, Blue on the remote within 2 seconds (keys 1, 2, 3, 4 on a PC). `?god` opens it at startup. Remotes without colour buttons (like LG's Magic Remote): codex → Settings → **Open god mode**.
 - **Use it:** ↑↓ move, ←→ adjust, OK press, Back close. The mouse works too. Buttons in red ask you to press twice.
-- **What's in it:** summon any visitor, trigger arrivals, show any message; speed up, pause or set the time of day; set the moon phase; lock and unlock tanks; set any species to unseen, sighted or collected; debug overlays (movement, bounds, school links); a performance readout (frame rate, draw time per frame, fish count, canvas size); a stress test with up to 200 extra fish; saved progress (presets, reset, export, import).
+- **What's in it:** summon any visitor, trigger arrivals, show any message; speed up, pause or set the time of day; set the moon phase; play any moment or mark it as seen; lock and unlock tanks; set any species to unseen, sighted or collected; debug overlays (movement, bounds, school links); a performance readout (frame rate, draw time per frame, fish count, canvas size); a stress test with up to 200 extra fish; saved progress (presets, reset, export, import).
 - **Fish lab:** one species shown large with a real-size copy below. Every number and colour of its look can be adjusted live (the fish in the tank change too), then copied as JSON into `src/data/species/<id>.ts`.
 
 ## Scripts
@@ -155,6 +158,7 @@ src/
   render/perf.ts     drops to 30 fps on slow devices
   data/species/      one file per species (how it looks and swims)
   data/codex.ts      codex facts per species, each with its sources
+  data/moments.ts    moments: rare behaviours, each with its sources (scripts in sim/moments.ts)
   data/biomes.ts     colours and settings per tank
   data/progression.ts which fish each tank starts with, and how it unlocks
   sim/               fish movement: steering, schooling, population

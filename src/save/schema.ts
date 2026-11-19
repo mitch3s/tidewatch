@@ -21,8 +21,10 @@ export interface SaveState {
   version: typeof SAVE_VERSION;
   species: Record<string, SpeciesProgress>;
   unlockedBiomes: BiomeId[];
+  /** Moments seen to the end (v1.4), by moment id. */
+  moments: Record<string, { witnessedAt: string }>;
   /** Remaining game time (ms) until the next event. */
-  timers: { nextArrivalMs: number; nextVisitorMs: number };
+  timers: { nextArrivalMs: number; nextVisitorMs: number; nextMomentMs: number };
   settings: {
     rotationMin: RotationMinutes;
     dayNight: boolean;
@@ -36,6 +38,10 @@ export interface SaveState {
 const MIN = 60_000;
 export const ARRIVAL_DELAY_MS: [number, number] = [20 * MIN, 40 * MIN];
 export const VISITOR_DELAY_MS: [number, number] = [45 * MIN, 90 * MIN];
+/** Between moments (spec v1.4 §3.2). */
+export const MOMENT_DELAY_MS: [number, number] = [8 * MIN, 15 * MIN];
+/** When a moment is due but none can play, look again after this. */
+export const MOMENT_RETRY_MS = 2 * MIN;
 
 export function randomDelay([lo, hi]: [number, number], rng: () => number): number {
   return Math.round(lerp(lo, hi, rng()));
@@ -54,7 +60,12 @@ export function createInitialState(roster: readonly Species[], rng: () => number
     version: SAVE_VERSION,
     species,
     unlockedBiomes,
-    timers: { nextArrivalMs: randomDelay(ARRIVAL_DELAY_MS, rng), nextVisitorMs: randomDelay(VISITOR_DELAY_MS, rng) },
+    moments: {},
+    timers: {
+      nextArrivalMs: randomDelay(ARRIVAL_DELAY_MS, rng),
+      nextVisitorMs: randomDelay(VISITOR_DELAY_MS, rng),
+      nextMomentMs: randomDelay(MOMENT_DELAY_MS, rng),
+    },
     settings: { rotationMin: 15, dayNight: true, closeups: true, sound: 'off' },
   };
 }

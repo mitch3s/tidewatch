@@ -8,7 +8,7 @@ export const mandarinDragonet: SpeciesDef = {
   commonName: 'Mandarin dragonet',
   scientificName: 'Synchiropus splendidus',
   displayLength: 80,
-  groupSize: [1, 1],
+  groupSize: [2, 2],
   look: {
     body: { template: 'flat-bottom', upper: 0.14, lower: 0.1, maxAt: 0.32, peduncle: 0.4, bluntness: 0.85 },
     palette: { body: '#1f86d8', back: '#1866b8', belly: '#3aa0e8', fin: '#e8762a', finEdge: '#1f86d8' },

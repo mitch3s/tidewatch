@@ -14,6 +14,9 @@ import { createDeepScenery } from './deep';
 import { Bubbles } from './bubbles';
 import { Camera, CLOSEUP_ZOOM } from './camera';
 import { Closeups } from './closeups';
+import { MomentFx } from './momentFx';
+import type { MomentDef } from '../../data/moments';
+import { momentActors, type MomentRun, startMoment } from '../../sim/moments';
 import { lightingAt, mixRgb } from './daynight';
 import { StaticLayer } from './layers';
 import { LightRays } from './lightRays';
@@ -55,6 +58,8 @@ export interface TankSceneOptions {
   debug?: DebugView;
   /** Whether close-ups are switched on in the settings. */
   closeups?: () => boolean;
+  /** A moment ended: played to the end on screen (`witnessed`), or cut short. */
+  onMomentEnd?: (id: string, witnessed: boolean) => void;
   /** A bubble rose (radius in px, world x), for the ambient sound. */
   onBubble?: (r: number, x: number) => void;
 }
@@ -82,6 +87,10 @@ export class TankScene {
   private readonly bubbles: Bubbles;
   private readonly grass: SeaGrass;
   private readonly sparkles = new Sparkles();
+  private readonly momentFx = new MomentFx();
+  /** The moment playing in this tank, if any (spec v1.4 §3). */
+  private moment: MomentRun | null = null;
+  private readonly onMomentEnd: (id: string, witnessed: boolean) => void;
   private readonly particles: Particles;
   private readonly caustics: Caustics;
   private readonly shadows: FloorShadows;
@@ -138,6 +147,7 @@ export class TankScene {
     this.moonPhase = opts.moonPhase ?? (() => moonPhase(new Date()));
     this.dayNight = opts.dayNight ?? (() => true);
     this.closeupsOn = opts.closeups ?? (() => true);
+    this.onMomentEnd = opts.onMomentEnd ?? (() => {});
     this.closeups = new Closeups(this.rng);
     this.debug = opts.debug;
   }
@@ -159,6 +169,7 @@ export class TankScene {
   startVisitor(species: Species): void {
     this.visitor = new VisitorSwimmer(species, this.tank.env.bounds, CATCH_WINDOW_MS / 1000, this.rng);
     // The visitor needs the whole tank in view.
+    this.abortMoment();
     this.closeups.end();
   }
 
@@ -176,6 +187,47 @@ export class TankScene {
   /** How dark it is now, 0 (day) .. 1 (night); 0 with day/night lighting off. */
   get night(): number {
     return this.dayNight() ? lightingAt(this.hour()).moon : 0;
+  }
+
+  /** The id of the moment playing, or null. */
+  get momentPlaying(): string | null {
+    return this.moment?.def.id ?? null;
+  }
+
+  /** Whether a moment could start now: nothing else is going on in the tank. */
+  get momentsFree(): boolean {
+    return !this.moment && !this.visitor && !this.closeups.active;
+  }
+
+  /** How many of each species are in the tank. */
+  speciesCounts(): Map<string, number> {
+    const counts = new Map<string, number>();
+    for (const a of this.tank.agents) counts.set(a.species.id, (counts.get(a.species.id) ?? 0) + 1);
+    return counts;
+  }
+
+  /**
+   * Start a moment (spec v1.4 §3). Returns false if its animals aren't here.
+   * The camera frames it when close-ups are on.
+   */
+  startMoment(def: MomentDef): boolean {
+    if (this.moment) this.abortMoment();
+    const actors = momentActors(def, this.tank.agents, this.rng);
+    if (!actors) return false;
+    const run = startMoment(def, actors, this.tank.env, this.rng);
+    this.moment = run;
+    if (this.closeupsOn()) this.closeups.follow(() => run.focus());
+    return true;
+  }
+
+  /** Cut the moment short (it doesn't count as witnessed). */
+  abortMoment(): void {
+    const m = this.moment;
+    if (!m) return;
+    m.release();
+    this.moment = null;
+    this.closeups.end();
+    this.onMomentEnd(m.def.id, false);
   }
 
   /** Start a close-up straight away (god mode). */
@@ -205,8 +257,10 @@ export class TankScene {
     // No sun in the deep sea: nobody rests, but migrating species still rise at night.
     this.tank.activity = this.dayNight() && !this.biome.lightless ? lerp(0.35, 1, day.rays) : 1;
     this.tank.night = this.dayNight() ? day.moon : 0;
+    this.updateMoment(dt);
     this.tank.update(dt);
-    this.closeups.update(dt, this.tank.agents, this.camera, this.closeupsAllowed && this.closeupsOn() && !this.visitor);
+    this.closeups.update(dt, this.tank.agents, this.camera, this.closeupsAllowed && this.closeupsOn() && !this.visitor, !this.moment);
+    this.momentFx.update(dt);
     this.bubbles.update(dt);
     this.particles.update(dt);
     this.motes.update(dt);
@@ -214,6 +268,22 @@ export class TankScene {
     if (this.visitor) {
       this.visitor.update(dt);
       if (this.visitor.done) this.visitor = null;
+    }
+  }
+
+  /** A moment plays only while its tank is on screen with the codex closed; otherwise it's cut short. */
+  private updateMoment(dt: number): void {
+    const m = this.moment;
+    if (!m) return;
+    if (!this.closeupsAllowed || m.actors.some((a) => !this.tank.agents.includes(a))) {
+      this.abortMoment();
+      return;
+    }
+    for (const fx of m.update(dt)) this.momentFx.add(fx);
+    if (m.done) {
+      this.moment = null;
+      this.closeups.end();
+      this.onMomentEnd(m.def.id, true);
     }
   }
 
@@ -267,6 +337,7 @@ export class TankScene {
       }
       this.drawGlows(ctx, agents.map((a) => a.species.look), poses, time);
       if (this.visitor) this.drawVisitor(ctx, alpha, time);
+      this.momentFx.draw(ctx);
       this.sparkles.draw(ctx);
       if (this.debug) this.drawDebug(ctx, alpha);
     });

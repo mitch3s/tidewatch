@@ -1,4 +1,5 @@
 import { BIOMES } from '../data/biomes';
+import { MOMENT_HINT, MOMENTS, momentsFor } from '../data/moments';
 import { moonIconSvg, moonPhaseName } from '../util/moon';
 import { APP_COMMIT, APP_VERSION } from '../version';
 import { DEV_TOOLS } from '../dev/enabled';
@@ -310,7 +311,13 @@ export class CodexScreen {
         return `<div class="tw-card tw-${p}" data-focus data-card data-species="${s.id}"><canvas></canvas><div class="tw-card-name">${escapeHtml(name)}</div><div class="tw-card-status">${escapeHtml(status)}</div></div>`;
       })
       .join('');
-    return `${header}<div class="tw-grid">${cards}</div>${footer}`;
+    // Moments seen in this tank (spec v1.4 §3.5).
+    const tankMoments = MOMENTS.filter((m) => getSpecies(m.speciesId)?.biome === tab);
+    const seen = tankMoments.filter((m) => state.moments[m.id]).length;
+    const gridFooter = tankMoments.length
+      ? footer.replace('</footer>', `<span class="tw-footer-stat">Moments seen: ${seen} / ${tankMoments.length}</span></footer>`)
+      : footer;
+    return `${header}<div class="tw-grid">${cards}</div>${gridFooter}`;
   }
 
   private settingsHtml(): string {
@@ -362,6 +369,7 @@ export class CodexScreen {
     const temp = c.water.tempC ? `, ${c.water.tempC[0]}–${c.water.tempC[1]} °C` : '';
     const size = `Up to ${c.size.cm} cm${SIZE_NOTE[c.size.measure]}`;
     const fact = (label: string, value: string) => `<div class="tw-fact"><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`;
+    const sourceLabels = [...new Set([...c.sources, ...momentsFor(id).flatMap((m) => m.sources)].map((x) => x.label))];
     return `<div class="tw-entry">
       <div class="tw-entry-visual"><canvas class="tw-entry-fish"></canvas><canvas class="tw-entry-map"></canvas><div class="tw-map-label">Native range</div></div>
       <div class="tw-entry-text">
@@ -377,9 +385,25 @@ export class CodexScreen {
         </dl>
         <h3>Did you know?</h3>
         <ul>${c.funFacts.map((f) => `<li>${escapeHtml(f)}</li>`).join('')}</ul>
-        <div class="tw-sources">Sources: ${c.sources.map((x) => escapeHtml(x.label)).join(' · ')}</div>
+        ${this.momentsHtml(id)}
+        <div class="tw-sources">Sources: ${sourceLabels.map(escapeHtml).join(' · ')}</div>
       </div></div>
       ${footer}`;
+  }
+
+  /** A species' moments: what you've seen, and when to watch for the rest (spec v1.4 §3.5). */
+  private momentsHtml(speciesId: string): string {
+    const list = momentsFor(speciesId);
+    if (!list.length) return '';
+    const items = list
+      .map((m) => {
+        const w = this.host.state.moments[m.id];
+        if (!w) return `<li class="tw-moment tw-moment-unseen"><b>?</b> Not seen yet · ${escapeHtml(MOMENT_HINT[m.when])}</li>`;
+        const date = new Date(w.witnessedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+        return `<li class="tw-moment"><b>${escapeHtml(m.name)}</b> ${escapeHtml(m.fact)} <span class="tw-moment-date">Seen ${escapeHtml(date)}</span></li>`;
+      })
+      .join('');
+    return `<h3>Moments</h3><ul class="tw-moments">${items}</ul>`;
   }
 
   // ---------------------------------------------------------------- canvases

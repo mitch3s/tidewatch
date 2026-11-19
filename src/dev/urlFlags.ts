@@ -18,6 +18,8 @@ export interface DevFlags {
   god: boolean;
   /** `?closeup=now`: start a close-up straight away. */
   closeupNow: boolean;
+  /** `?moment=<id>`: start that moment straight away (switching tank if needed). */
+  moment: string | null;
 }
 
 export function parseDevFlags(search: string): DevFlags {
@@ -33,5 +35,6 @@ export function parseDevFlags(search: string): DevFlags {
     debug: p.has('debug'),
     god: p.has('god'),
     closeupNow: p.get('closeup') === 'now',
+    moment: p.get('moment') || null,
   };
 }

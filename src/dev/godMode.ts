@@ -6,6 +6,7 @@
  */
 import { BIOMES } from '../data/biomes';
 import { ALL_SPECIES, getSpecies, speciesIn } from '../data/species';
+import { MOMENTS } from '../data/moments';
 import { BIOME_ORDER } from '../data/progression';
 import type { BiomeId } from '../data/types';
 import type { RuntimeClock } from '../game/clock';
@@ -37,6 +38,7 @@ export interface GodHost {
   readonly debugView: DebugView;
   readonly current: BiomeId;
   hourOverride: number | null;
+  startMoment(id: string): string | null;
   moonOverride: number | null;
   moonPhase(): number;
   idleDisabled: boolean;
@@ -233,6 +235,22 @@ export class GodMode {
       set: (v) => (h.moonOverride = v % 1),
       format: (v) => `${moonPhaseName(v)} (${Math.round(moonIllumination(v) * 100)}% lit)`,
     });
+
+    rows.push({ kind: 'header', label: 'Moments' });
+    rows.push({ kind: 'info', label: 'Next moment', get: () => (h.scene().momentPlaying ? `playing: ${h.scene().momentPlaying}` : fmt(g.state.timers.nextMomentMs)) });
+    rows.push({ kind: 'button', label: 'Next moment now (one that fits this tank and time)', run: () => g.forceMoment() });
+    for (const m of MOMENTS) {
+      rows.push({
+        kind: 'button',
+        label: `Play moment: ${m.name}`,
+        run: () => {
+          const err = h.startMoment(m.id);
+          if (err) this.note(err);
+          else this.close();
+        },
+      });
+      rows.push({ kind: 'toggle', label: `${m.name}: witnessed`, get: () => !!g.state.moments[m.id], set: (v) => g.setMomentWitnessed(m.id, v) });
+    }
 
     rows.push({ kind: 'header', label: 'Tanks' });
     for (const b of BIOME_ORDER) {

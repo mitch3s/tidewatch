@@ -235,7 +235,7 @@ export const CODEX: Record<string, Codex> = {
     funFacts: [
       'It has no scales. Instead its skin is covered in a thick, bad-smelling mucus that may help keep predators away.',
       'Its blue is a real blue pigment, held in special cells called cyanophores. Almost every other blue animal gets its colour from structure, not pigment.',
-      'Pairs spawn at dusk, rising together above the reef to release their eggs.',
+      // Its dusk spawning is now a moment (data/moments.ts).
     ],
     sources: [
       fishbase('12644'),

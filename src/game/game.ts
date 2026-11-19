@@ -1,6 +1,14 @@
 import { BIOME_ORDER, BIOME_RULES } from '../data/progression';
 import type { BiomeId, Species } from '../data/types';
-import { ARRIVAL_DELAY_MS, type CollectionState, randomDelay, type SaveState, VISITOR_DELAY_MS } from '../save/schema';
+import {
+  ARRIVAL_DELAY_MS,
+  type CollectionState,
+  MOMENT_DELAY_MS,
+  MOMENT_RETRY_MS,
+  randomDelay,
+  type SaveState,
+  VISITOR_DELAY_MS,
+} from '../save/schema';
 import { pickArrival } from './arrivals';
 import { checkUnlocks } from './unlocks';
 import { pickVisitor, visitorCandidates } from './visitors';
@@ -16,7 +24,8 @@ export type GameEvent =
   | { type: 'visitorSpawned'; speciesId: string; biome: BiomeId }
   | { type: 'caught'; speciesId: string; biome: BiomeId }
   | { type: 'visitorMissed'; speciesId: string; biome: BiomeId }
-  | { type: 'biomeUnlocked'; biome: BiomeId; starters: string[] };
+  | { type: 'biomeUnlocked'; biome: BiomeId; starters: string[] }
+  | { type: 'momentWitnessed'; momentId: string; first: boolean };
 
 export interface TickContext {
   /** The tank currently on screen (visitors appear there). */
@@ -69,6 +78,7 @@ export class Game {
     if (gameMs > 0) {
       t.nextArrivalMs -= gameMs;
       t.nextVisitorMs -= gameMs;
+      t.nextMomentMs -= gameMs;
       changed = true;
     }
 
@@ -126,6 +136,40 @@ export class Game {
     } else {
       this.state.species[id] = { state };
     }
+    this.changed();
+  }
+
+  /** Whether a moment is due (spec v1.4 §3.2). The app decides which one can play. */
+  get momentDue(): boolean {
+    return this.state.timers.nextMomentMs <= 0;
+  }
+
+  /**
+   * A due moment was dealt with: one started (wait the full gap until the
+   * next), or none could play (look again soon).
+   */
+  momentHandled(started: boolean): void {
+    this.state.timers.nextMomentMs = started ? randomDelay(MOMENT_DELAY_MS, this.rng) : MOMENT_RETRY_MS;
+    this.changed();
+  }
+
+  /** Bring the next moment forward to now (god mode). */
+  forceMoment(): void {
+    this.state.timers.nextMomentMs = 0;
+  }
+
+  /** A moment played to the end on screen. */
+  witnessMoment(id: string): void {
+    const first = !this.state.moments[id];
+    if (first) this.state.moments[id] = { witnessedAt: this.now().toISOString() };
+    this.emit({ type: 'momentWitnessed', momentId: id, first });
+    this.changed();
+  }
+
+  /** Mark a moment as witnessed or not (god mode). */
+  setMomentWitnessed(id: string, witnessed: boolean): void {
+    if (witnessed) this.state.moments[id] ??= { witnessedAt: this.now().toISOString() };
+    else delete this.state.moments[id];
     this.changed();
   }
 

@@ -114,3 +114,29 @@ describe('loadSave / writeSave', () => {
     expect(() => writeSave(broken, s)).not.toThrow();
   });
 });
+
+describe('moments in the save (v1.4)', () => {
+  it('a save from before v1.4 loads with no moments and a fresh moment timer', () => {
+    const store = new MemoryStore();
+    const old = createInitialState(ALL_SPECIES, rng()) as unknown as Record<string, unknown>;
+    delete old.moments;
+    delete (old.timers as Record<string, unknown>).nextMomentMs;
+    store.setItem(SAVE_KEY, JSON.stringify(old));
+    const s = loadSave(store, ALL_SPECIES, rng());
+    expect(s.moments).toEqual({});
+    expect(s.timers.nextMomentMs).toBeGreaterThan(0);
+  });
+
+  it('keeps witnessed moments and drops unknown ones', () => {
+    const store = new MemoryStore();
+    const s0 = createInitialState(ALL_SPECIES, rng());
+    (s0.moments as Record<string, unknown>) = {
+      'corydoras-air': { witnessedAt: '2026-11-19T10:00:00Z' },
+      'made-up': { witnessedAt: '2026-11-19T10:00:00Z' },
+      'mandarin-courtship': { witnessedAt: 42 },
+    };
+    writeSave(store, s0);
+    const s = loadSave(store, ALL_SPECIES, rng());
+    expect(s.moments).toEqual({ 'corydoras-air': { witnessedAt: '2026-11-19T10:00:00Z' } });
+  });
+});

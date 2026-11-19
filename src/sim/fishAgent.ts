@@ -24,6 +24,20 @@ export interface TankEnv {
   home?: Vec;
 }
 
+/**
+ * A moment's script steering this fish (spec v1.4 §3): where to go and how
+ * fast. While set, the fish ignores food, its school and its depth band.
+ */
+export interface Directive {
+  target: Vec;
+  /** Speed as a multiple of its cruising speed. */
+  pace: number;
+  /** May climb or dive steeply (e.g. darting to the surface). */
+  steep?: boolean;
+  /** How far up it may go, in world y (defaults to the tank's top). */
+  top?: number;
+}
+
 /** Shared state for a school of one species. */
 export interface School {
   target: Vec;
@@ -46,6 +60,8 @@ export class FishAgent {
   /** Turn progress 0..1, or null when not turning. */
   turn: number | null = null;
   school: School | null = null;
+  /** Set by a moment's script; null for normal behaviour. */
+  directive: Directive | null = null;
 
   private readonly cruise: number;
   private readonly turnSeconds: number;
@@ -127,9 +143,11 @@ export class FishAgent {
     this.rest = mood.food.length > 0 ? 0 : 1 - mood.activity;
     this.night = mood.night ?? 0;
 
+    const dir = this.directive;
     // ---- food: eat what's in reach, then go for the nearest flake
     if (this.meal && this.meal.eaten) this.meal = null;
-    if (mood.food.length > 0) {
+    if (dir) this.meal = null;
+    else if (mood.food.length > 0) {
       const mouth = { x: this.pos.x + this.facing * this.length * 0.45, y: this.pos.y };
       for (const f of mood.food) {
         if (!f.eaten && Math.hypot(f.x - mouth.x, f.y - mouth.y) < Math.max(12, this.length * 0.3) && this.canEat(f, env)) {
@@ -141,7 +159,11 @@ export class FishAgent {
     } else this.meal = null;
 
     // ---- choose where to go
-    if (this.meal) {
+    if (dir) {
+      this.target = dir.target;
+      this.pause = 0;
+      this.burst = 0;
+    } else if (this.meal) {
       this.target = { x: this.meal.x, y: this.meal.y };
       this.pause = 0;
       this.retarget = lerp(1, 3, rng());
@@ -170,7 +192,7 @@ export class FishAgent {
     }
 
     // Slower at night; quicker when there's food.
-    const pace = this.meal ? 1.5 : lerp(1, 0.45, this.rest);
+    const pace = dir ? dir.pace : this.meal ? 1.5 : lerp(1, 0.45, this.rest);
     const speedNow = this.pause > 0 ? 0 : this.cruise * pace * (this.burst > 0 ? 2.2 : 1);
     const maxSpeed = this.cruise * pace * (this.burst > 0 ? 2.4 : 1.25);
     const maxAcc = maxSpeed * (this.burst > 0 ? 3 : 1.1);
@@ -179,12 +201,16 @@ export class FishAgent {
     let ax = 0;
     let ay = 0;
     const seekF = arrive(this.pos, this.vel, this.target, speedNow, this.length * 2);
-    const seekW = this.school && !this.meal ? 0.5 : 1;
+    const seekW = this.school && !this.meal && !dir ? 0.5 : 1;
     ax += seekF.x * seekW;
     ay += seekF.y * seekW;
 
     // Food may be outside the usual depth band: then only the tank's walls count.
-    const contain = containment(this.pos, this.meal ? env.bounds : this.boundsFor(env), 140);
+    const contain = containment(
+      this.pos,
+      dir ? { ...env.bounds, top: dir.top ?? env.bounds.top } : this.meal ? env.bounds : this.boundsFor(env),
+      dir?.top !== undefined ? 40 : 140,
+    );
     ax += contain.x * maxSpeed * 3;
     ay += contain.y * maxSpeed * 3;
 
@@ -209,7 +235,7 @@ export class FishAgent {
     ax += sep.x * maxSpeed * 1;
     ay += sep.y * maxSpeed * 3;
 
-    if (this.school && school.length && !this.meal) {
+    if (this.school && school.length && !this.meal && !dir) {
       const coh = cohesion(this.pos, school);
       ax += coh.x * 0.9;
       ay += coh.y * 0.9;
@@ -226,7 +252,8 @@ export class FishAgent {
     if (this.turn === null) {
       this.vel = limit({ x: this.vel.x + acc.x * dt, y: this.vel.y + acc.y * dt }, maxSpeed);
       // Fish mostly swim level.
-      this.vel.y = clamp(this.vel.y, -maxSpeed * 0.45, maxSpeed * 0.45);
+      const climb = dir?.steep ? 0.95 : 0.45;
+      this.vel.y = clamp(this.vel.y, -maxSpeed * climb, maxSpeed * climb);
       // Fish don't swim backwards: they turn round instead.
       if (this.vel.x * this.facing < 0) {
         this.vel.x = 0;
@@ -256,7 +283,8 @@ export class FishAgent {
     this.phase += dt * swim.tailHz * TAU * effort;
     // Pectoral fins work harder when hovering in place.
     this.finPhase += dt * TAU * (speed < this.cruise * 0.3 ? 2.2 : 1.2);
-    const targetPitch = this.turn !== null ? 0 : clamp(Math.atan2(this.vel.y, Math.abs(this.vel.x) + this.cruise * 0.3), -0.35, 0.35);
+    const maxPitch = this.directive?.steep ? 0.8 : 0.35;
+    const targetPitch = this.turn !== null ? 0 : clamp(Math.atan2(this.vel.y, Math.abs(this.vel.x) + this.cruise * 0.3), -maxPitch, maxPitch);
     this.pitch += (targetPitch - this.pitch) * Math.min(1, dt * 3);
 
     this.prev = this.cur;

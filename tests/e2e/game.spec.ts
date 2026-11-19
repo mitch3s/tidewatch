@@ -67,3 +67,15 @@ test('left/right switches between unlocked tanks', async ({ page }) => {
   await page.keyboard.press('ArrowLeft');
   await expect(brand).toContainText('Coral reef');
 });
+
+test('a moment plays, shows its caption, and is recorded once it ends (v1.4)', async ({ page }) => {
+  test.setTimeout(60_000);
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto('/?reset&unlockAll&moment=corydoras-air');
+  await expect(page.locator('.tw-brand')).toContainText('Amazon river');
+  // Behind the "new tank" messages from unlocking everything.
+  await expect(page.locator('.tw-toast', { hasText: 'A gulp of air' })).toBeVisible({ timeout: 30_000 });
+  await expect.poll(async () => (await saved(page))?.moments?.['corydoras-air']?.witnessedAt, { timeout: 30_000 }).toBeTruthy();
+  expect(errors).toEqual([]);
+});

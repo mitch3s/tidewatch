@@ -396,6 +396,25 @@
 .tw-entry-text li {
   margin-bottom: 6px;
 }
+.tw-moments {
+  list-style: none;
+  padding-left: 0 !important;
+}
+.tw-moment b {
+  color: #ffd98a;
+  font-weight: 600;
+  margin-right: 6px;
+}
+.tw-moment-unseen {
+  opacity: 0.6;
+}
+.tw-moment-date {
+  opacity: 0.55;
+  white-space: nowrap;
+}
+.tw-footer-stat {
+  float: right;
+}
 .tw-sources {
   margin-top: 14px;
   font-size: 20px;

@@ -11,7 +11,11 @@ Toward 1.4. [Spec](docs/specs/2026-11-19-tidewatch-v1.4-moments.md)
 - Moonlight follows the real moon: at night the reef and Amazon tanks get silver rays and a faint net of light on the floor, bright under a full moon and gone on a new moon. Before, every night had the same moonlight.
 - The codex's Settings tab shows tonight's moon phase.
 - `?moon=0.5` previews a moon phase; god mode can set it too.
-- Still to come in 1.4: moments (rare animal behaviours to witness and record in the codex) and a timeline.
+- Moments: now and then an animal does something special, and the camera follows it. The first four: clownfish sheltering in their anemone (by day), a mandarin dragonet pair rising to spawn (at dusk), the lanternfish school's evening rise (at dusk), and a corydoras darting up for a gulp of air.
+- Watch a moment to the end and the codex records it on the animal's page, with the date; moments you haven't seen show a hint of when to watch. Each tank's codex page shows how many of its moments you've seen.
+- Mandarin dragonets now come as a pair. Their dusk spawning moved from the codex's fun facts into their moment.
+- `?moment=<id>` starts a moment (development builds); god mode can play any moment and mark moments as seen.
+- Still to come in 1.4: more moments, including coral spawning after a full moon, and a timeline.
 
 ## 1.3.0 (2026-11-19)
 

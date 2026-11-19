@@ -1,8 +1,10 @@
+import { MOMENTS } from '../data/moments';
 import { BIOME_ORDER } from '../data/progression';
 import type { BiomeId, Species } from '../data/types';
 import {
   ARRIVAL_DELAY_MS,
   type CollectionState,
+  MOMENT_DELAY_MS,
   createInitialState,
   randomDelay,
   type RotationMinutes,
@@ -56,12 +58,26 @@ export function migrate(raw: unknown, roster: readonly Species[], rng: () => num
     ? (timers.nextVisitorMs as number)
     : randomDelay(VISITOR_DELAY_MS, rng);
 
+  const nextMomentMs = validMs(timers.nextMomentMs, MOMENT_DELAY_MS[1])
+    ? (timers.nextMomentMs as number)
+    : randomDelay(MOMENT_DELAY_MS, rng);
+
+  // Moments (v1.4): saves from before have none; unknown ids are dropped.
+  const moments: SaveState['moments'] = {};
+  if (isObject(raw.moments)) {
+    for (const m of MOMENTS) {
+      const w = raw.moments[m.id];
+      if (isObject(w) && typeof w.witnessedAt === 'string') moments[m.id] = { witnessedAt: w.witnessedAt };
+    }
+  }
+
   const settings = isObject(raw.settings) ? raw.settings : {};
   return {
     version: SAVE_VERSION,
     species,
     unlockedBiomes,
-    timers: { nextArrivalMs, nextVisitorMs },
+    moments,
+    timers: { nextArrivalMs, nextVisitorMs, nextMomentMs },
     settings: {
       rotationMin: ROTATIONS.includes(settings.rotationMin as RotationMinutes)
         ? (settings.rotationMin as RotationMinutes)

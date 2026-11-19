@@ -23,6 +23,8 @@ import { CodexScreen } from './ui/codex';
 import { escapeHtml, UiRoot } from './ui/root';
 import { Toasts } from './ui/toast';
 import { VisitorHint } from './ui/visitorHint';
+import { getMoment, type MomentDef, MOMENTS } from './data/moments';
+import { pickMoment } from './game/moments';
 import { moonPhase } from './util/moon';
 import { createRng } from './util/rng';
 
@@ -79,6 +81,7 @@ export class App implements GodHost {
   private codex: CodexScreen | null = null;
   private lastInputAt = performance.now();
   private time = 0;
+  private readonly momentRng = createRng(Date.now() ^ 0x40e1);
   /** Ambient sound (spec v1.2 §5). */
   private readonly ambience = new Ambience();
 
@@ -150,7 +153,10 @@ export class App implements GodHost {
     this.time += dt;
     const realMs = dt * 1000;
     const gameMs = this.clock.advance(realMs);
-    this.game.tick(gameMs, realMs, { biome: this.current, visitorsAllowed: this.switching === null && this.codex === null });
+    // A due visitor waits for a moment to finish (spec v1.4 §3.2).
+    const momentPlaying = this.scene().momentPlaying !== null;
+    this.game.tick(gameMs, realMs, { biome: this.current, visitorsAllowed: this.switching === null && this.codex === null && !momentPlaying });
+    this.updateMoments();
 
     for (const [biome, s] of this.scenes) {
       s.closeupsAllowed = biome === this.current && this.switching === null && this.codex === null;
@@ -219,8 +225,11 @@ export class App implements GodHost {
     if (!s) {
       const fish = ALL_SPECIES.filter((sp) => sp.biome === biome && this.game.state.species[sp.id]?.state === 'collected');
       s = new TankScene(BIOMES[biome], fish, {
-        hour: () => this.hourOverride ?? this.opts.hour ?? deviceHour(),
+        hour: () => this.hourNow(),
         moonPhase: () => this.moonPhase(),
+        onMomentEnd: (id, witnessed) => {
+          if (witnessed) this.game.witnessMoment(id);
+        },
         dayNight: () => this.game.state.settings.dayNight,
         closeups: () => this.game.state.settings.closeups,
         // Only the tank on screen makes bubble sounds.
@@ -233,6 +242,11 @@ export class App implements GodHost {
       this.scenes.set(biome, s);
     }
     return s;
+  }
+
+  /** Hour of the day for lighting and moments: god mode, then `?hour=`, then the clock. */
+  hourNow(): number {
+    return this.hourOverride ?? this.opts.hour ?? deviceHour();
   }
 
   /** The moon's phase for lighting and the codex: god mode, then `?moon=`, then today's. */
@@ -284,9 +298,52 @@ export class App implements GodHost {
     const due = this.rotation.update(dt, {
       minutes: this.game.state.settings.rotationMin,
       tanks: this.game.state.unlockedBiomes.length,
-      hold: this.codex !== null || this.switching !== null || (v !== null && v.biome === this.current),
+      hold:
+        this.codex !== null ||
+        this.switching !== null ||
+        (v !== null && v.biome === this.current) ||
+        this.scene().momentPlaying !== null,
     });
     if (due) this.switchTank(1, SWITCH_AUTO_S);
+  }
+
+  // ---------------------------------------------------------------- moments
+
+  /**
+   * When a moment is due, start one that fits the tank on screen and the time
+   * of day (spec v1.4 §3.2). It waits while anything else is going on.
+   */
+  private updateMoments(): void {
+    if (!this.game.momentDue) return;
+    const v = this.game.activeVisitor;
+    const s = this.scene();
+    if (this.switching !== null || this.codex !== null || (v !== null && v.biome === this.current) || !s.momentsFree) return;
+    const def = pickMoment(MOMENTS, this.game.state, { hour: this.hourNow(), counts: s.speciesCounts() }, this.momentRng);
+    const started = def !== null && s.startMoment(def);
+    if (started) this.showMomentCaption(def);
+    this.game.momentHandled(started);
+  }
+
+  private showMomentCaption(def: MomentDef): void {
+    const first = !this.game.state.moments[def.id];
+    this.toasts.show({ kicker: first ? 'New moment' : 'Moment', title: def.name, body: getSpecies(def.speciesId)?.commonName });
+  }
+
+  /**
+   * Start a moment now, ignoring its time of day (god mode, `?moment=`).
+   * Switches to its tank if needed. Returns a reason if it can't.
+   */
+  startMoment(id: string): string | null {
+    const def = getMoment(id);
+    if (!def) return `Unknown moment: ${id}`;
+    const biome = getSpecies(def.speciesId)!.biome;
+    if (!this.game.state.unlockedBiomes.includes(biome)) return `The ${BIOMES[biome].name} tank is locked`;
+    if (biome !== this.current) this.switchTo(biome);
+    const s = this.scene();
+    s.abortMoment();
+    if (!s.startMoment(def)) return `Not enough ${getSpecies(def.speciesId)!.commonName.toLowerCase()} in the tank`;
+    this.showMomentCaption(def);
+    return null;
   }
 
   // ---------------------------------------------------------------- codex
@@ -418,6 +475,17 @@ export class App implements GodHost {
         });
         this.save();
         break;
+      case 'momentWitnessed':
+        if (e.first) {
+          const def = getMoment(e.momentId);
+          this.toasts.show({
+            kicker: 'Moment recorded',
+            title: def?.name ?? e.momentId,
+            body: `See it in the codex under ${def ? getSpecies(def.speciesId)?.commonName ?? '' : ''}`,
+          });
+        }
+        this.save();
+        break;
       case 'biomeUnlocked': {
         const starters = e.starters.map((id) => getSpecies(id)).filter((s): s is Species => !!s);
         // A scene that already exists gets the starters; otherwise they appear when it's first shown.
@@ -449,6 +517,13 @@ export class App implements GodHost {
     if (flags.collectAll) for (const s of ALL_SPECIES) this.game.collect(s.id);
     if (flags.arrivalNow) this.game.forceArrival();
     if (flags.closeupNow) requestAnimationFrame(() => this.scene().startCloseup());
+    if (flags.moment) {
+      const id = flags.moment;
+      requestAnimationFrame(() => {
+        const err = this.startMoment(id);
+        if (err) this.toasts.show({ kicker: 'Debug', title: err });
+      });
+    }
     if (flags.visitorNow) {
       // Wait for the first frame so the scene exists, then summon.
       requestAnimationFrame(() => {
