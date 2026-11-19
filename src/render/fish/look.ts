@@ -166,6 +166,8 @@ export interface Swim {
    * migration, e.g. lanternfish). Shifts the depth band up at night.
    */
   migrates?: boolean;
+  /** Colours dim to grey while it rests at night (neon tetras, v1.4). */
+  fadesAtNight?: boolean;
 }
 
 /** Light-producing spots (photophores), drawn as bright dots that glow in the dark. */

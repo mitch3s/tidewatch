@@ -38,6 +38,7 @@ export function migrate(raw: unknown, roster: readonly Species[], rng: () => num
     if (isObject(p) && STATES.includes(p.state as CollectionState)) {
       const entry: SpeciesProgress = { state: p.state as CollectionState };
       if (typeof p.collectedAt === 'string') entry.collectedAt = p.collectedAt;
+      if (typeof p.sightedAt === 'string') entry.sightedAt = p.sightedAt;
       species[s.id] = entry;
     } else {
       species[s.id] = base.species[s.id]!;

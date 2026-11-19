@@ -1,7 +1,7 @@
 # Tidewatch v1.4: moments
 
 **Date:** 2026-11-19
-**Status:** Parts 1 (the moon) and 2 (moments, with the first four) released in 1.4.0 (19 November 2026), awaiting a TV test; part 3 in progress.
+**Status:** Parts 1 (the moon) and 2 (moments, with the first four) released in 1.4.0 (19 November 2026), awaiting a TV test; part 3 (six more moments and the timeline) implemented, not yet released, awaiting a TV test.
 **Builds on:** [`2026-11-18-tidewatch-v1.3-deep-sea.md`](2026-11-18-tidewatch-v1.3-deep-sea.md)
 
 ## 1. Why
@@ -57,12 +57,12 @@ Every moment needs a source before it ships, the same rule as codex facts (FishB
 | Mandarin dragonet | A pair rises from the bottom side by side to spawn | Dusk | 2 ✓ |
 | Spotted lanternfish | The whole school rises toward the surface together | Dusk | 2 ✓ |
 | Bronze corydoras | One dashes to the surface to gulp air, then sinks back | Any | 2 ✓ |
-| Atolla jellyfish | "Burglar alarm": a ring of light flashes round the rim | Any | 3 |
-| Vampire squid | Turns its cloak inside out ("pineapple" pose) | Any | 3 |
-| Silver arowana | Leaps at the surface after an insect | Day | 3 |
-| Royal gramma | Swims upside down under a rock ledge | Day | 3 |
-| Neon tetra | Stripes fade as the school rests | Night | 3 |
-| Coral reef (whole tank) | Coral spawning: a slow upward drift of pink and white egg bundles | Night, a few nights after a full moon, November–December only | 3 |
+| Atolla jellyfish | Alarm display: its ring of lights flashes fast and bright | Any | 3 ✓ |
+| Vampire squid | Turns its cloak inside out ("pineapple" pose) | Any | 3 ✓ |
+| Silver arowana | Leaps out of the water and dives back in | Day | 3 ✓ |
+| Royal gramma | Swims upside down under a plate coral | Day | 3 ✓ |
+| Neon tetra | The school settles low as its stripes fade to grey | Night | 3 ✓ |
+| Coral reef (whole tank) | Coral spawning: clusters rise from the corals all over the reef to the surface | Night, 3–6 days after a full moon, October–December | 3 ✓ |
 
 Notes on part 2 (checked 19 November 2026):
 
@@ -71,7 +71,17 @@ Notes on part 2 (checked 19 November 2026):
 - **Lanternfish and corydoras:** use what their codex entries already say, with the same sources (FishBase, Wikipedia; FishBase, Scotcat).
 - Times of day: day 8:00–17:30, dusk 17:30–21:00, night 21:00–5:30, by the same clock as the lighting.
 
-Coral spawning belongs to the tank, not to one species: it shows under the reef tab in the codex, next to the species.
+Notes on part 3 (checked 19 November 2026, Wikipedia unless noted):
+
+- **Atolla jellyfish:** the codex already said, from SeaLifeBase and Wikipedia, that it sets off a series of blue flashes when attacked. That fun fact moved into the moment. On screen the rim's chasing pulse runs about five times as fast, the spots grow, and a flickering glow lights the water round it.
+- **Vampire squid:** "If disturbed, it will curl its arms up outwards and wrap them around its body, turning itself inside-out"; Wikipedia names it the "pumpkin" or "pineapple" posture and mentions the spines (cirri). Drawn as the web and arms swinging up and over the body (a new `cloak` pose value), with the cirri showing. Its glowing mucus cloud is left out: the same page says it is only released when the animal is very agitated.
+- **Silver arowana:** the codex's "water monkey" fact (FishBase, Wikipedia). The leap follows a scripted arc out through the top of the picture, with a splash as it leaves and as it comes back. The insect isn't drawn: the picture ends at the surface.
+- **Royal gramma:** the codex's fact that under ledges it swims belly to the rock (FishBase, Wikipedia). It swims under the lowest plate coral on the big right rock and rolls over (a new `roll` pose value).
+- **Neon tetra:** "During the night, the blue and red become gray or black as the fish rests … It reactivates once it becomes active in the morning." So neon tetras now fade whenever they rest at night (with day/night lighting on), not only in the moment; the moment is the school gathering low and settling.
+- **Coral spawning:** Coral reef: eggs are released "usually … at night", "three to six days after a full moon". Great Barrier Reef: inner reefs spawn "during the week after the full moon in October", outer reefs "in November and December". Coral: "Colonies release gametes in clusters … which float to the surface". So it happens at night, 2.5–6.5 days after the full moon, from October to December. No source gives a colour: the pale pink and cream are an artistic choice, and the codex text doesn't mention one. It plays wide (no close-up), about 450 clusters over 36 seconds, and the moment lasts 70.
+- **Scenery and parallax:** the scenery is drawn with less parallax than the fish, so when the camera zooms in the two drift apart by up to about 50 px. Moments that put a fish against the scenery (clownfish, royal gramma, the coral spawn) convert the scenery's position to where it shows on screen each frame.
+
+Coral spawning belongs to the tank, not to one species: it shows on its own line under the reef's cards in the codex, with its fact once seen or its hint until then.
 
 A rare visitor's moments can only happen once it has been caught and lives in the tank.
 
@@ -88,7 +98,7 @@ A new field `moments: Record<string, { witnessedAt: string }>` plus the moment t
 ## 4. Part 3: more moments and the timeline
 
 - The rest of the moments in 3.4.
-- **Timeline** in the codex: a new tab, after the tanks and before Settings, listing everything in the order it happened: tanks discovered, fish arrived, visitors caught or missed, moments witnessed. Newest first, scrollable with the D-pad. It covers the "'first caught' history timeline" from the v1 spec's future ideas. Older events are rebuilt from the saved `collectedAt` dates (missed visitors and unlocks have no saved date, so they only appear from 1.4 onward).
+- **Timeline** in the codex: a new tab, after the tanks and before Settings, listing everything in the order it happened: tanks discovered, fish arrived, visitors caught or missed, moments witnessed. Newest first, scrollable with the D-pad. It covers the "'first caught' history timeline" from the v1 spec's future ideas. Rebuilt from the save: each fish's `collectedAt`; a tank's discovery is when its starter fish arrived; moments' `witnessedAt`. Missed visitors had no saved date, so species now save `sightedAt` (kept when the visitor is caught later); missed visitors from before part 3 don't appear. Grouped by day, with the time; the D-pad scrolls the list.
 
 ## 5. Alongside: TV test pass and housekeeping
 

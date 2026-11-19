@@ -421,7 +421,7 @@ export const CODEX: Record<string, Codex> = {
     diet: 'Crustaceans and other drifting food',
     water: { type: 'salt' },
     funFacts: [
-      'When attacked, it sets off a series of blue flashes, which may draw in bigger predators more interested in its attacker than in the jelly itself.',
+      // Its alarm flashes are now a moment (data/moments.ts).
       'One of its tentacles grows much longer than the others, and is thought to help it catch prey.',
       'The marine biologist Edith Widder built a camera lure, the E-jelly, that copies its alarm flashes.',
     ],

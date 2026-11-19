@@ -1,5 +1,6 @@
 import { BIOMES } from '../data/biomes';
-import { MOMENT_HINT, MOMENTS, momentsFor } from '../data/moments';
+import { buildTimeline } from '../game/timeline';
+import { momentHint, MOMENTS, momentsFor, tankMoments as wholeTankMoments } from '../data/moments';
 import { moonIconSvg, moonPhaseName } from '../util/moon';
 import { APP_COMMIT, APP_VERSION } from '../version';
 import { DEV_TOOLS } from '../dev/enabled';
@@ -37,7 +38,9 @@ export interface CodexHost {
   openGodMode?: () => void;
 }
 
-type Page = { kind: 'grid'; tab: BiomeId | 'settings' } | { kind: 'entry'; id: string };
+/** A codex tab: one per tank, the timeline (v1.4), and settings. */
+type Tab = BiomeId | 'timeline' | 'settings';
+type Page = { kind: 'grid'; tab: Tab } | { kind: 'entry'; id: string };
 
 /** How each size measure is explained after the number (see Codex.size). */
 const SIZE_NOTE: Record<Codex['size']['measure'], string> = {
@@ -151,13 +154,14 @@ export class CodexScreen {
     if (!this.focus.move(dir)) return;
     const f = this.focus.focused;
     // Moving onto a tank tab shows that tank's cards.
-    const tab = f?.dataset.tab as BiomeId | 'settings' | undefined;
+    const tab = f?.dataset.tab as Tab | undefined;
     if (tab && this.page.kind === 'grid' && this.page.tab !== tab) {
       this.page = { kind: 'grid', tab };
       this.render();
       this.focus.focus(this.el.querySelector<HTMLElement>(`[data-tab="${tab}"]`));
     }
     this.liveFocusedCard();
+    this.scrollTimeline();
   }
 
   private activate(el: HTMLElement | null): void {
@@ -232,7 +236,7 @@ export class CodexScreen {
     if (!el) return;
     this.focus.focus(el);
     if (el.dataset.tab && this.page.kind === 'grid') {
-      this.page = { kind: 'grid', tab: el.dataset.tab as BiomeId | 'settings' };
+      this.page = { kind: 'grid', tab: el.dataset.tab as Tab };
       this.render();
       this.focus.focus(this.el.querySelector(`[data-tab="${el.dataset.tab}"]`));
       return;
@@ -246,7 +250,7 @@ export class CodexScreen {
 
   // ---------------------------------------------------------------- pages
 
-  private showGrid(tab: BiomeId | 'settings', focusId?: string): void {
+  private showGrid(tab: Tab, focusId?: string): void {
     this.page = { kind: 'grid', tab };
     this.render();
     if (focusId) this.focus.focus(this.el.querySelector(`[data-species="${focusId}"]`));
@@ -281,7 +285,7 @@ export class CodexScreen {
     else this.setupEntryCanvases(this.page.id);
   }
 
-  private gridHtml(tab: BiomeId | 'settings'): string {
+  private gridHtml(tab: Tab): string {
     const state = this.host.state;
     const tabs = BIOME_ORDER.map((b) => {
       const all = ALL_SPECIES.filter((s) => s.biome === b);
@@ -290,10 +294,12 @@ export class CodexScreen {
       const label = unlocked ? `${have} / ${all.length}` : 'locked';
       return `<div class="tw-tab${tab === b ? ' tw-active' : ''}" data-focus data-tab="${b}">${escapeHtml(BIOMES[b].name)}<span>${label}</span></div>`;
     }).join('');
+    const timelineTab = `<div class="tw-tab tw-tab-timeline${tab === 'timeline' ? ' tw-active' : ''}" data-focus data-tab="timeline">Timeline</div>`;
     const settingsTab = `<div class="tw-tab tw-tab-settings${tab === 'settings' ? ' tw-active' : ''}" data-focus data-tab="settings">Settings</div>`;
-    const header = `<header><h1>Codex</h1><nav>${tabs}${settingsTab}</nav></header>`;
+    const header = `<header><h1>Codex</h1><nav>${tabs}${timelineTab}${settingsTab}</nav></header>`;
     const footer = `<footer><b>▲ ▼ ◀ ▶</b> move &nbsp; <b>OK</b> open &nbsp; <b>BACK</b> close</footer>`;
     if (tab === 'settings') return `${header}${this.settingsHtml()}${footer}`;
+    if (tab === 'timeline') return `${header}${this.timelineHtml()}${footer}`;
 
     if (!state.unlockedBiomes.includes(tab)) {
       const rule = BIOME_RULES.find((r) => r.biome === tab)!;
@@ -312,12 +318,22 @@ export class CodexScreen {
       })
       .join('');
     // Moments seen in this tank (spec v1.4 §3.5).
-    const tankMoments = MOMENTS.filter((m) => getSpecies(m.speciesId)?.biome === tab);
+    const tankMoments = MOMENTS.filter((m) => m.biome === tab);
     const seen = tankMoments.filter((m) => state.moments[m.id]).length;
     const gridFooter = tankMoments.length
       ? footer.replace('</footer>', `<span class="tw-footer-stat">Moments seen: ${seen} / ${tankMoments.length}</span></footer>`)
       : footer;
-    return `${header}<div class="tw-grid">${cards}</div>${gridFooter}`;
+    // Whole-tank moments (coral spawning) don't belong to one animal: one line under the grid.
+    const whole = wholeTankMoments(tab)
+      .map((m) => {
+        const w = state.moments[m.id];
+        const body = w
+          ? `${escapeHtml(m.fact)} <span class="tw-moment-date">Seen ${escapeHtml(longDate(w.witnessedAt))}</span>`
+          : `<span class="tw-moment-unseen">Not seen yet · ${escapeHtml(momentHint(m))}</span>`;
+        return `<div class="tw-tank-moment tw-moment"><b>${escapeHtml(m.name)}</b> ${body}</div>`;
+      })
+      .join('');
+    return `${header}<div class="tw-grid">${cards}</div>${whole}${gridFooter}`;
   }
 
   private settingsHtml(): string {
@@ -391,6 +407,37 @@ export class CodexScreen {
       ${footer}`;
   }
 
+  /** Everything that happened, newest first, grouped by day (spec v1.4 §4). */
+  private timelineHtml(): string {
+    const entries = buildTimeline(this.host.state, ALL_SPECIES, MOMENTS);
+    if (!entries.length) return `<div class="tw-timeline"><p class="tw-tl-empty">Nothing has happened yet. Keep watching.</p></div>`;
+    let day = '';
+    const rows: string[] = [];
+    for (const e of entries) {
+      const d = longDate(e.at);
+      if (d !== day) {
+        day = d;
+        rows.push(`<h3 class="tw-tl-day">${escapeHtml(d)}</h3>`);
+      }
+      const time = new Date(e.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      rows.push(
+        `<div class="tw-tl-row tw-tl-${e.kind}" data-focus data-tl><span class="tw-tl-time">${escapeHtml(time)}</span>` +
+          `<span class="tw-tl-title">${escapeHtml(e.title)}</span><span class="tw-tl-detail">${escapeHtml(e.detail)}</span></div>`,
+      );
+    }
+    return `<div class="tw-timeline">${rows.join('')}</div>`;
+  }
+
+  /** Keep the focused timeline row in view as the D-pad moves through it. */
+  private scrollTimeline(): void {
+    const el = this.focus.focused;
+    const box = el?.closest<HTMLElement>('.tw-timeline');
+    if (!el || !box) return;
+    const top = el.offsetTop - box.scrollTop;
+    if (top < 60) box.scrollTop = Math.max(0, el.offsetTop - 60);
+    else if (top + el.offsetHeight > box.clientHeight - 20) box.scrollTop = el.offsetTop + el.offsetHeight - box.clientHeight + 20;
+  }
+
   /** A species' moments: what you've seen, and when to watch for the rest (spec v1.4 §3.5). */
   private momentsHtml(speciesId: string): string {
     const list = momentsFor(speciesId);
@@ -398,8 +445,8 @@ export class CodexScreen {
     const items = list
       .map((m) => {
         const w = this.host.state.moments[m.id];
-        if (!w) return `<li class="tw-moment tw-moment-unseen"><b>?</b> Not seen yet · ${escapeHtml(MOMENT_HINT[m.when])}</li>`;
-        const date = new Date(w.witnessedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+        if (!w) return `<li class="tw-moment tw-moment-unseen"><b>?</b> Not seen yet · ${escapeHtml(momentHint(m))}</li>`;
+        const date = longDate(w.witnessedAt);
         return `<li class="tw-moment"><b>${escapeHtml(m.name)}</b> ${escapeHtml(m.fact)} <span class="tw-moment-date">Seen ${escapeHtml(date)}</span></li>`;
       })
       .join('');
@@ -499,4 +546,9 @@ export class CodexScreen {
     }
     this.focus.focus(null);
   }
+}
+
+/** "19 November 2026", in the TV's language. */
+function longDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
 }

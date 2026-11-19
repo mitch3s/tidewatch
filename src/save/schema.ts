@@ -14,6 +14,8 @@ export interface SpeciesProgress {
   state: CollectionState;
   /** ISO timestamp, set when collected. */
   collectedAt?: string;
+  /** ISO timestamp, set when a rare visitor was first missed (v1.4, for the timeline). */
+  sightedAt?: string;
 }
 
 /** Everything that is saved on the TV (spec section 8). */

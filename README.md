@@ -20,7 +20,7 @@ An ambient aquarium for LG webOS TVs. Leave it running like a screensaver and sl
 | Amazon river | Collect 4 reef species | Neon tetra, bronze corydoras, freshwater angelfish, blue discus, zebra pleco and silver arowana (both rare visitors) |
 | Deep sea (1.3) | Collect 4 Amazon species | Atolla jellyfish, spotted lanternfish, lovely hatchetfish, vampire squid, dumbo octopus, humpback anglerfish (rare visitor) |
 
-Now and then an animal does something special: a **moment**, such as a mandarin pair rising to spawn at dusk or a corydoras darting up for a gulp of air. Some only happen at certain times of day. Once you've watched one to the end, the codex records it on that animal's page.
+Now and then an animal does something special: a **moment**, such as a mandarin pair rising to spawn at dusk, an arowana leaping out of the water, or a vampire squid turning itself inside out. Some only happen at certain times of day; coral spawning only happens a few nights after a full moon, from October to December. Once you've watched one to the end, the codex records it on that animal's page. The codex's **Timeline** tab lists everything that has happened, newest first.
 
 At night the reef and Amazon tanks get moonlight from above, as bright as the real moon is full tonight; on a new moon the night is dark. The deep sea is almost black: no sunlight, only the animals' own glow. Lanternfish and hatchetfish rise toward the surface at night.
 

@@ -318,7 +318,8 @@ export class App implements GodHost {
     const v = this.game.activeVisitor;
     const s = this.scene();
     if (this.switching !== null || this.codex !== null || (v !== null && v.biome === this.current) || !s.momentsFree) return;
-    const def = pickMoment(MOMENTS, this.game.state, { hour: this.hourNow(), counts: s.speciesCounts() }, this.momentRng);
+    const ctx = { biome: this.current, hour: this.hourNow(), moonPhase: this.moonPhase(), month: new Date().getMonth() + 1, counts: s.speciesCounts() };
+    const def = pickMoment(MOMENTS, this.game.state, ctx, this.momentRng);
     const started = def !== null && s.startMoment(def);
     if (started) this.showMomentCaption(def);
     this.game.momentHandled(started);
@@ -326,7 +327,7 @@ export class App implements GodHost {
 
   private showMomentCaption(def: MomentDef): void {
     const first = !this.game.state.moments[def.id];
-    this.toasts.show({ kicker: first ? 'New moment' : 'Moment', title: def.name, body: getSpecies(def.speciesId)?.commonName });
+    this.toasts.show({ kicker: first ? 'New moment' : 'Moment', title: def.name, body: momentSubject(def) });
   }
 
   /**
@@ -336,12 +337,12 @@ export class App implements GodHost {
   startMoment(id: string): string | null {
     const def = getMoment(id);
     if (!def) return `Unknown moment: ${id}`;
-    const biome = getSpecies(def.speciesId)!.biome;
+    const biome = def.biome;
     if (!this.game.state.unlockedBiomes.includes(biome)) return `The ${BIOMES[biome].name} tank is locked`;
     if (biome !== this.current) this.switchTo(biome);
     const s = this.scene();
     s.abortMoment();
-    if (!s.startMoment(def)) return `Not enough ${getSpecies(def.speciesId)!.commonName.toLowerCase()} in the tank`;
+    if (!s.startMoment(def)) return `Not enough ${momentSubject(def).toLowerCase()} in the tank`;
     this.showMomentCaption(def);
     return null;
   }
@@ -481,7 +482,7 @@ export class App implements GodHost {
           this.toasts.show({
             kicker: 'Moment recorded',
             title: def?.name ?? e.momentId,
-            body: `See it in the codex under ${def ? getSpecies(def.speciesId)?.commonName ?? '' : ''}`,
+            body: def ? `See it in the codex under ${def.speciesId ? momentSubject(def) : `the ${momentSubject(def).toLowerCase()} tab`}` : undefined,
           });
         }
         this.save();
@@ -573,6 +574,11 @@ export class App implements GodHost {
       `canvas        ${this.stage.canvas.width}×${this.stage.canvas.height} (pixel ratio ${window.devicePixelRatio})\n` +
       `keep awake    ${this.platform.keepAwakeStatus()}`;
   }
+}
+
+/** Who a moment is about: the animal, or the tank for a whole-tank moment. */
+function momentSubject(def: MomentDef): string {
+  return def.speciesId ? (getSpecies(def.speciesId)?.commonName ?? def.speciesId) : BIOMES[def.biome].name;
 }
 
 function deviceMoon(): number {

@@ -242,13 +242,18 @@ export class Game {
     const v = this.activeVisitor!;
     this.activeVisitor = null;
     const p = this.state.species[v.speciesId];
-    if (p && p.state === 'unseen') p.state = 'sighted';
+    if (p && p.state === 'unseen') {
+      p.state = 'sighted';
+      p.sightedAt = this.now().toISOString();
+    }
     this.emit({ type: 'visitorMissed', speciesId: v.speciesId, biome: v.biome });
     this.changed();
   }
 
   private markCollected(id: string): void {
-    this.state.species[id] = { state: 'collected', collectedAt: this.now().toISOString() };
+    // Keep when it was first seen swimming by, for the timeline.
+    const sightedAt = this.state.species[id]?.sightedAt;
+    this.state.species[id] = { state: 'collected', collectedAt: this.now().toISOString(), ...(sightedAt ? { sightedAt } : {}) };
   }
 
   private runUnlocks(): void {

@@ -1,6 +1,6 @@
 import type { CephalopodForm, CreatureForm, FishLook, JellyForm } from './look';
 import type { FishPose, RenderOptions } from './renderFish';
-import { TAU } from '../../util/math';
+import { clamp, TAU } from '../../util/math';
 
 /**
  * Animals that aren't fish (spec v1.3): jellyfish and deep-sea cephalopods.
@@ -170,10 +170,22 @@ function hemPoints(form: CephalopodForm, phase: number): Array<[number, number]>
   });
 }
 
-/** Arm tip positions in body units (for glowing tips): just past the hem. */
-export function cephalopodArmTips(form: CephalopodForm, phase: number): Array<[number, number]> {
+/** How far the cloak swings up and back over the body at full "pineapple" (v1.4). */
+const CLOAK_ANGLE = Math.PI * 0.92;
+/** How much the cloak draws in around the body as it turns over (1 = not at all). */
+const CLOAK_WRAP = 0.35;
+
+/** Arm tip positions in body units (for glowing tips): just past the hem, swung up with the cloak. */
+export function cephalopodArmTips(form: CephalopodForm, phase: number, cloak = 0): Array<[number, number]> {
   const { crown } = cephShape(form, phase);
-  return hemPoints(form, phase).map(([x, y]) => [crown.x + (x - crown.x) * 1.1, crown.y + (y - crown.y) * 1.1] as [number, number]);
+  const a = cloak * CLOAK_ANGLE;
+  const c = Math.cos(a);
+  const sn = Math.sin(a);
+  return hemPoints(form, phase).map(([x, y]) => {
+    const dx = (x - crown.x) * 1.1 * (1 - CLOAK_WRAP * cloak);
+    const dy = (y - crown.y) * 1.1;
+    return [crown.x + dx * c - dy * sn, crown.y + dx * sn + dy * c] as [number, number];
+  });
 }
 
 function drawCephalopod(ctx: CanvasRenderingContext2D, form: CephalopodForm, pose: FishPose, opts: RenderOptions, look: FishLook): void {
@@ -209,41 +221,71 @@ function drawCephalopod(ctx: CanvasRenderingContext2D, form: CephalopodForm, pos
   ctx.globalAlpha = 1;
 
   // The web: from the crown, its front edge drops down and its back edge
-  // sweeps behind, to a scalloped hem between the arm tips.
-  const hem = hemPoints(form, pose.phase);
-  const web = new Path2D();
-  web.moveTo(crown.x + 0.05, crown.y - 0.04);
-  web.quadraticCurveTo(hem[0]![0] + 0.03, crown.y + webLen * 0.45, hem[0]![0], hem[0]![1]);
-  for (let i = 1; i < hem.length; i++) {
-    const [x0, y0] = hem[i - 1]!;
-    const [x1, y1] = hem[i]!;
-    web.quadraticCurveTo((x0 + x1) / 2 + 0.01, (y0 + y1) / 2 - webLen * 0.12, x1, y1);
-  }
-  const last = hem[hem.length - 1]!;
-  web.quadraticCurveTo(last[0] + 0.02, crown.y + webLen * 0.2, mantleCx - m.width * 0.25, crown.y - 0.06);
-  web.closePath();
-  if (sil) {
-    ctx.fillStyle = sil;
-    ctx.fill(web);
-  } else {
-    const wg = ctx.createLinearGradient(0, crown.y, 0, crown.y + webLen);
-    wg.addColorStop(0, form.mantle.belly);
-    wg.addColorStop(1, form.web.color);
-    ctx.globalAlpha = 0.94;
-    ctx.fillStyle = wg;
-    ctx.fill(web);
-    ctx.globalAlpha = 1;
-    // Arms run from the crown through the web and poke out past the hem.
-    ctx.strokeStyle = form.web.armColor;
-    ctx.lineWidth = 0.014;
-    ctx.lineCap = 'round';
-    for (const [tx, ty] of cephalopodArmTips(form, pose.phase)) {
-      ctx.beginPath();
-      ctx.moveTo(crown.x, crown.y);
-      ctx.quadraticCurveTo(crown.x + (tx - crown.x) * 0.4, crown.y + (ty - crown.y) * 0.75, tx, ty);
-      ctx.stroke();
+  // sweeps behind, to a scalloped hem between the arm tips. In the
+  // "pineapple" pose (v1.4) it swings up and back over the body, inside out,
+  // showing the spines (cirri) along the arms.
+  const cloak = clamp(pose.cloak ?? 0, 0, 1);
+  const drawWeb = () => {
+    ctx.save();
+    ctx.translate(crown.x, crown.y);
+    ctx.rotate(cloak * CLOAK_ANGLE);
+    ctx.scale(1 - CLOAK_WRAP * cloak, 1);
+    ctx.translate(-crown.x, -crown.y);
+    const hem = hemPoints(form, pose.phase);
+    const web = new Path2D();
+    web.moveTo(crown.x + 0.05, crown.y - 0.04);
+    web.quadraticCurveTo(hem[0]![0] + 0.03, crown.y + webLen * 0.45, hem[0]![0], hem[0]![1]);
+    for (let i = 1; i < hem.length; i++) {
+      const [x0, y0] = hem[i - 1]!;
+      const [x1, y1] = hem[i]!;
+      web.quadraticCurveTo((x0 + x1) / 2 + 0.01, (y0 + y1) / 2 - webLen * 0.12, x1, y1);
     }
-  }
+    const last = hem[hem.length - 1]!;
+    web.quadraticCurveTo(last[0] + 0.02, crown.y + webLen * 0.2, mantleCx - m.width * 0.25, crown.y - 0.06);
+    web.closePath();
+    if (sil) {
+      ctx.fillStyle = sil;
+      ctx.fill(web);
+    } else {
+      const wg = ctx.createLinearGradient(0, crown.y, 0, crown.y + webLen);
+      wg.addColorStop(0, form.mantle.belly);
+      wg.addColorStop(1, form.web.color);
+      ctx.globalAlpha = 0.94;
+      ctx.fillStyle = wg;
+      ctx.fill(web);
+      ctx.globalAlpha = 1;
+      // Arms run from the crown through the web and poke out past the hem.
+      ctx.strokeStyle = form.web.armColor;
+      ctx.lineWidth = 0.014;
+      ctx.lineCap = 'round';
+      for (const [tx, ty] of cephalopodArmTips(form, pose.phase)) {
+        ctx.beginPath();
+        ctx.moveTo(crown.x, crown.y);
+        ctx.quadraticCurveTo(crown.x + (tx - crown.x) * 0.4, crown.y + (ty - crown.y) * 0.75, tx, ty);
+        ctx.stroke();
+        if (cloak > 0.1) {
+          // Cirri: soft spines along each arm, on the side that's now outward.
+          ctx.save();
+          ctx.globalAlpha = Math.min(0.55, (cloak - 0.1) * 1.2);
+          ctx.strokeStyle = '#d9a3ad';
+          ctx.lineWidth = 0.008;
+          for (let k = 1; k <= 5; k++) {
+            const t = k / 6;
+            const qx = (1 - t) * (1 - t) * crown.x + 2 * (1 - t) * t * (crown.x + (tx - crown.x) * 0.4) + t * t * tx;
+            const qy = (1 - t) * (1 - t) * crown.y + 2 * (1 - t) * t * (crown.y + (ty - crown.y) * 0.75) + t * t * ty;
+            ctx.beginPath();
+            ctx.moveTo(qx, qy);
+            ctx.lineTo(qx - 0.03, qy + 0.012);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
+    }
+    ctx.restore();
+  };
+  // Once it's more than half way over, the cloak covers the mantle and eye.
+  if (cloak <= 0.5) drawWeb();
 
   // Mantle, leaning back.
   ctx.save();
@@ -309,9 +351,11 @@ function drawCephalopod(ctx: CanvasRenderingContext2D, form: CephalopodForm, pos
   ctx.fill();
   ctx.restore();
 
+  if (cloak > 0.5) drawWeb();
+
   if (look.glow) {
     ctx.fillStyle = look.glow.color;
-    for (const [x, y] of cephalopodArmTips(form, pose.phase)) {
+    for (const [x, y] of cephalopodArmTips(form, pose.phase, cloak)) {
       ctx.beginPath();
       ctx.arc(x, y, look.glow.size, 0, TAU);
       ctx.fill();
@@ -325,7 +369,7 @@ function drawCephalopod(ctx: CanvasRenderingContext2D, form: CephalopodForm, pos
  */
 export function creatureGlowPoints(form: CreatureForm, look: FishLook, pose: FishPose): Array<[number, number]> {
   const local =
-    form.kind === 'jelly' ? jellyRimPoints(form, pose.phase, look.glow?.spots.length || 12) : cephalopodArmTips(form, pose.phase);
+    form.kind === 'jelly' ? jellyRimPoints(form, pose.phase, look.glow?.spots.length || 12) : cephalopodArmTips(form, pose.phase, pose.cloak ?? 0);
   const dir = form.kind === 'jelly' ? 1 : pose.facing < 0 ? -1 : 1;
   const a = form.kind === 'jelly' ? pose.pitch * 0.3 : pose.pitch * 0.5 * dir;
   const c = Math.cos(a);

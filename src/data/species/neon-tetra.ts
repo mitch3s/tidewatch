@@ -26,6 +26,6 @@ export const neonTetra: SpeciesDef = {
     ],
     eye: { u: 0.13, v: -0.18, size: 0.055, iris: '#4aa6d8' },
     gill: null,
-    swim: { speed: [0.9, 1.6], tailHz: 4.5, flex: 0.035, depth: [0.3, 0.7], behaviour: 'schooling' },
+    swim: { speed: [0.9, 1.6], tailHz: 4.5, flex: 0.035, depth: [0.3, 0.7], behaviour: 'schooling', fadesAtNight: true },
   },
 };

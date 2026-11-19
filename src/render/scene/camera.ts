@@ -44,6 +44,15 @@ export class Camera {
     ctx.translate(-STAGE_WIDTH / 2 + this.panX * parallax, -STAGE_HEIGHT / 2 + this.panY * parallax);
   }
 
+  /** Convert a world point on a layer to stage (screen) coordinates. */
+  toScreen(x: number, y: number, parallax = 1): { x: number; y: number } {
+    const z = 1 + (this.zoom - 1) * parallax;
+    return {
+      x: (x - STAGE_WIDTH / 2 + this.panX * parallax) * z + STAGE_WIDTH / 2,
+      y: (y - STAGE_HEIGHT / 2 + this.panY * parallax) * z + STAGE_HEIGHT / 2,
+    };
+  }
+
   /** Convert a stage (screen) point to world coordinates on a layer. */
   toWorld(x: number, y: number, parallax = 1): { x: number; y: number } {
     const z = 1 + (this.zoom - 1) * parallax;

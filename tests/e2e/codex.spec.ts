@@ -91,7 +91,8 @@ test('settings change with the remote and are saved', async ({ page }) => {
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight'); // Settings tab (after reef, Amazon, deep sea)
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight'); // Settings tab (after reef, Amazon, deep sea, timeline)
   await expect(page.locator('.tw-settings')).toBeVisible();
   await page.keyboard.press('ArrowDown');
   await expect(focused(page)).toContainText('Switch tanks automatically');
@@ -121,7 +122,8 @@ test('reset progress needs a second press', async ({ page }) => {
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight'); // Settings tab
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight'); // Settings tab (after the timeline)
   for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowDown');
   await expect(focused(page)).toContainText('Reset progress');
   await page.keyboard.press('Enter');
@@ -154,7 +156,8 @@ test('turning the sound on starts the ambience without errors', async ({ page })
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight'); // Settings tab (after reef, Amazon, deep sea)
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight'); // Settings tab (after reef, Amazon, deep sea, timeline)
   for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
   await expect(focused(page)).toContainText('Ambient sound');
   await page.keyboard.press('Enter');
@@ -165,4 +168,19 @@ test('turning the sound on starts the ambience without errors', async ({ page })
   await page.waitForTimeout(3000); // bubbles rise and play sounds meanwhile
   expect(errors).toEqual([]);
   expect((await saved(page)).settings.sound).toBe('normal');
+});
+
+test('the timeline lists what happened, newest first, and scrolls with the remote (v1.4)', async ({ page }) => {
+  await page.goto('/?reset&visitor=now');
+  await expect(page.locator('.tw-hint')).toHaveClass(/tw-show/);
+  await page.keyboard.press('Enter'); // catch the mandarin dragonet
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight'); // from the reef tab: Amazon, deep sea, timeline
+  await expect(page.locator('.tw-tab.tw-active')).toContainText('Timeline');
+  const rows = page.locator('.tw-tl-row');
+  await expect(rows.first()).toContainText('Caught a Mandarin dragonet');
+  await expect(rows.last()).toContainText('Your first tank: Coral reef');
+  await page.keyboard.press('ArrowDown');
+  await expect(focused(page)).toContainText('Caught a Mandarin dragonet');
 });

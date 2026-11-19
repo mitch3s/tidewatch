@@ -84,7 +84,8 @@ test('god mode opens from the codex settings (for remotes without colour buttons
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight'); // Settings tab (after reef, Amazon, deep sea)
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight'); // Settings tab (after reef, Amazon, deep sea, timeline)
   const row = page.locator('[data-setting="god"]');
   await expect(row).toContainText('Open god mode');
   for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowDown');

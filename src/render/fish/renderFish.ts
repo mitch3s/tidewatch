@@ -31,6 +31,10 @@ export interface FishPose {
    * then flips `facing` and resets this to 0.
    */
   turn?: number;
+  /** Rolled over, 0 (upright) .. 1 (upside down), e.g. a royal gramma under a ledge (v1.4). */
+  roll?: number;
+  /** A cephalopod's cloak turned up over its body, 0..1 (the vampire squid's "pineapple" pose, v1.4). */
+  cloak?: number;
 }
 
 /** Head and tail yaw for a turn in progress. */
@@ -90,7 +94,8 @@ export function renderFish(
   ctx.save();
   ctx.translate(pose.x, pose.y);
   ctx.rotate(pose.facing < 0 ? -pose.pitch : pose.pitch);
-  ctx.scale(pose.length * pose.facing, pose.length);
+  // Rolling over flips the fish top to bottom, through edge-on.
+  ctx.scale(pose.length * pose.facing, pose.length * Math.cos(Math.PI * clamp(pose.roll ?? 0, 0, 1)));
 
   const samples = detailed ? 40 : 20;
   // Filled as a strip of consistently wound quads, so a body folded over

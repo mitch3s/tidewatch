@@ -22,6 +22,17 @@ export interface TankEnv {
   bounds: Bounds;
   /** A home point for species that stay close to one spot (the anemone). */
   home?: Vec;
+  /** Just under an overhanging ledge, for fish that swim upside down beneath it (v1.4). */
+  ledge?: Vec;
+  /** Where corals grow, for coral spawning (v1.4). */
+  corals?: Vec[];
+  /**
+   * Where a point on the scenery (anemone, ledge, corals) is in the fish's
+   * coordinates right now. The scenery is drawn with less parallax than the
+   * fish, so when the camera zooms in the two drift apart; moments that put a
+   * fish against the scenery use this to line up on screen.
+   */
+  fromScenery?: (p: Vec) => Vec;
 }
 
 /**
@@ -36,7 +47,26 @@ export interface Directive {
   steep?: boolean;
   /** How far up it may go, in world y (defaults to the tank's top). */
   top?: number;
+  /** Put it exactly here this step, ignoring steering (e.g. a leap out of the water). */
+  pos?: Vec;
+  /** How it should look; eased toward these values, and back to 0 without a directive. */
+  show?: Partial<Show>;
 }
+
+/** Looks a moment can ask for (v1.4); all 0 normally. */
+export interface Show {
+  /** Rolled upside down, 0..1. */
+  roll: number;
+  /** Cephalopod cloak turned up over the body, 0..1. */
+  cloak: number;
+  /** Colours dimmed to grey, 0..1 (neon tetras at rest). */
+  fade: number;
+  /** Bioluminescent display turned up, 0..1. */
+  glow: number;
+}
+
+/** How fast each look eases toward its target, per second. */
+const SHOW_RATE: Show = { roll: 1.6, cloak: 0.8, fade: 0.35, glow: 3 };
 
 /** Shared state for a school of one species. */
 export interface School {
@@ -62,6 +92,8 @@ export class FishAgent {
   school: School | null = null;
   /** Set by a moment's script; null for normal behaviour. */
   directive: Directive | null = null;
+  /** Current looks (see Show). */
+  readonly show: Show = { roll: 0, cloak: 0, fade: 0, glow: 0 };
 
   private readonly cruise: number;
   private readonly turnSeconds: number;
@@ -248,8 +280,20 @@ export class FishAgent {
 
     const acc = limit({ x: ax, y: ay }, maxAcc);
 
+    // ---- looks: toward what the moment asks for; neon-like fish dim as they rest at night
+    const restFade = swim.fadesAtNight ? clamp(this.rest / 0.6, 0, 1) : 0;
+    for (const k of ['roll', 'cloak', 'fade', 'glow'] as const) {
+      const goal = dir?.show?.[k] ?? (k === 'fade' ? restFade : 0);
+      const v = this.show[k];
+      const step = SHOW_RATE[k] * dt;
+      this.show[k] = v < goal ? Math.min(goal, v + step) : Math.max(goal, v - step);
+    }
+
     // ---- move
-    if (this.turn === null) {
+    if (dir?.pos) {
+      this.vel = { x: (dir.pos.x - this.pos.x) / Math.max(dt, 1e-3), y: (dir.pos.y - this.pos.y) / Math.max(dt, 1e-3) };
+      this.turn = null;
+    } else if (this.turn === null) {
       this.vel = limit({ x: this.vel.x + acc.x * dt, y: this.vel.y + acc.y * dt }, maxSpeed);
       // Fish mostly swim level.
       const climb = dir?.steep ? 0.95 : 0.45;
@@ -275,7 +319,7 @@ export class FishAgent {
         this.turnCooldown = lerp(1, 2.5, rng());
       }
     }
-    this.pos = { x: this.pos.x + this.vel.x * dt, y: this.pos.y + this.vel.y * dt };
+    this.pos = dir?.pos ? { ...dir.pos } : { x: this.pos.x + this.vel.x * dt, y: this.pos.y + this.vel.y * dt };
 
     // ---- animation
     const speed = Math.hypot(this.vel.x, this.vel.y);
@@ -283,7 +327,7 @@ export class FishAgent {
     this.phase += dt * swim.tailHz * TAU * effort;
     // Pectoral fins work harder when hovering in place.
     this.finPhase += dt * TAU * (speed < this.cruise * 0.3 ? 2.2 : 1.2);
-    const maxPitch = this.directive?.steep ? 0.8 : 0.35;
+    const maxPitch = this.directive?.pos ? 1.1 : this.directive?.steep ? 0.8 : 0.35;
     const targetPitch = this.turn !== null ? 0 : clamp(Math.atan2(this.vel.y, Math.abs(this.vel.x) + this.cruise * 0.3), -maxPitch, maxPitch);
     this.pitch += (targetPitch - this.pitch) * Math.min(1, dt * 3);
 
@@ -320,6 +364,8 @@ export class FishAgent {
       flex,
       finPhase: this.finPhase,
       turn,
+      roll: this.show.roll,
+      cloak: this.show.cloak,
     };
   }
 

@@ -2,12 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { MOMENTS } from '../../src/data/moments';
 import { ALL_SPECIES } from '../../src/data/species';
 import { Game, type GameEvent } from '../../src/game/game';
-import { inMomentTime, momentCandidates, pickMoment } from '../../src/game/moments';
+import { inMomentTime, type MomentContext, momentCandidates, pickMoment } from '../../src/game/moments';
+import type { BiomeId } from '../../src/data/types';
 import { createInitialState, MOMENT_DELAY_MS, MOMENT_RETRY_MS } from '../../src/save/schema';
 import { createRng } from '../../src/util/rng';
 
 const fresh = () => createInitialState(ALL_SPECIES, createRng(1), new Date('2026-01-01T00:00:00Z'));
 const counts = (entries: Record<string, number>) => new Map(Object.entries(entries));
+/** A context in a tank at an hour; a half moon in June unless given. */
+const ctx = (biome: BiomeId, hour: number, c: Record<string, number>, extra: Partial<MomentContext> = {}): MomentContext => ({
+  biome,
+  hour,
+  moonPhase: 0.25,
+  month: 6,
+  counts: counts(c),
+  ...extra,
+});
 
 describe('inMomentTime', () => {
   it('knows day, dusk and night, wrapping past midnight', () => {
@@ -25,17 +35,33 @@ describe('inMomentTime', () => {
 
 describe('momentCandidates', () => {
   it('needs the animals in the tank, enough of them, at the right time of day', () => {
-    const ids = (hour: number, c: Record<string, number>) => momentCandidates(MOMENTS, { hour, counts: counts(c) }).map((m) => m.id);
-    expect(ids(12, { 'ocellaris-clownfish': 2, 'bronze-corydoras': 3 })).toEqual(['clownfish-shelter', 'corydoras-air']);
-    expect(ids(22, { 'ocellaris-clownfish': 2 })).toEqual([]);
-    expect(ids(19, { 'mandarin-dragonet': 1 })).toEqual([]);
-    expect(ids(19, { 'mandarin-dragonet': 2 })).toEqual(['mandarin-courtship']);
+    const ids = (biome: BiomeId, hour: number, c: Record<string, number>) => momentCandidates(MOMENTS, ctx(biome, hour, c)).map((m) => m.id);
+    expect(ids('reef', 12, { 'ocellaris-clownfish': 2, 'royal-gramma': 1 })).toEqual(['clownfish-shelter', 'gramma-ledge']);
+    expect(ids('reef', 22, { 'ocellaris-clownfish': 2 })).toEqual([]);
+    expect(ids('reef', 19, { 'mandarin-dragonet': 1 })).toEqual([]);
+    expect(ids('reef', 19, { 'mandarin-dragonet': 2 })).toEqual(['mandarin-courtship']);
+    expect(ids('amazon', 23, { 'neon-tetra': 10, 'bronze-corydoras': 3 })).toEqual(['corydoras-air', 'neon-night']);
+    // Only the tank on screen counts.
+    expect(ids('amazon', 12, { 'ocellaris-clownfish': 2 })).toEqual([]);
+  });
+
+  it('coral spawning needs night, a few nights after a full moon, from October to December', () => {
+    const coral = (hour: number, moonPhase: number, month: number) =>
+      momentCandidates(MOMENTS, ctx('reef', hour, {}, { moonPhase, month })).some((m) => m.id === 'coral-spawning');
+    const nightsAfterFull = (n: number) => 0.5 + n / 29.53;
+    expect(coral(23, nightsAfterFull(4), 11)).toBe(true);
+    expect(coral(23, nightsAfterFull(3), 10)).toBe(true);
+    expect(coral(23, nightsAfterFull(6), 12)).toBe(true);
+    expect(coral(23, nightsAfterFull(0), 11)).toBe(false); // the full moon itself
+    expect(coral(23, nightsAfterFull(9), 11)).toBe(false);
+    expect(coral(23, nightsAfterFull(4), 6)).toBe(false); // wrong month
+    expect(coral(13, nightsAfterFull(4), 11)).toBe(false); // daytime
   });
 });
 
 describe('pickMoment', () => {
   it('returns null when nothing fits', () => {
-    expect(pickMoment(MOMENTS, fresh(), { hour: 12, counts: counts({}) }, Math.random)).toBeNull();
+    expect(pickMoment(MOMENTS, fresh(), ctx('reef', 12, {}), Math.random)).toBeNull();
   });
 
   it('favours moments not yet witnessed, 3 to 1 at equal weight', () => {
@@ -45,7 +71,8 @@ describe('pickMoment', () => {
     let unseen = 0;
     const defs = MOMENTS.filter((m) => m.id === 'clownfish-shelter' || m.id === 'corydoras-air').map((m) => ({ ...m, weight: 1 }));
     for (let i = 0; i < 4000; i++) {
-      if (pickMoment(defs, s, { hour: 12, counts: counts({ 'ocellaris-clownfish': 2, 'bronze-corydoras': 3 }) }, rng)!.id === 'corydoras-air') unseen++;
+      const both = defs.map((m) => ({ ...m, biome: 'reef' as const }));
+      if (pickMoment(both, s, ctx('reef', 12, { 'ocellaris-clownfish': 2, 'bronze-corydoras': 3 }), rng)!.id === 'corydoras-air') unseen++;
     }
     expect(unseen / 4000).toBeCloseTo(0.75, 1);
   });

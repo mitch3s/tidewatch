@@ -56,6 +56,8 @@ export class FishSprites {
   /** Draw a fish from the cache. Returns false if the caller should draw it directly. */
   draw(ctx: CanvasRenderingContext2D, species: Species, pose: FishPose, level: DepthLevel = 0): boolean {
     if ((pose.turn ?? 0) > 0.001 || Math.abs(Math.abs(pose.facing) - 1) > 0.001) return false;
+    // Rolled or cloaked poses (moments, v1.4) aren't cached: draw them directly.
+    if ((pose.roll ?? 0) > 0.001 || (pose.cloak ?? 0) > 0.001) return false;
     const set = this.setFor(species, level);
     if (!set) return false;
     const phase = ((pose.phase % TAU) + TAU) % TAU;

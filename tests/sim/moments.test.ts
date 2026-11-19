@@ -2,24 +2,33 @@ import { describe, expect, it } from 'vitest';
 import { MOMENTS } from '../../src/data/moments';
 import { getSpecies } from '../../src/data/species';
 import { MOMENT_SCRIPTS, momentActors, type MomentEffect, startMoment } from '../../src/sim/moments';
+import type { FishAgent } from '../../src/sim/fishAgent';
 import { Tank } from '../../src/sim/tank';
 import { createRng } from '../../src/util/rng';
 
-const env = { bounds: { left: 60, right: 1860, top: 90, bottom: 900 }, home: { x: 960, y: 760 } };
+const env = {
+  bounds: { left: 60, right: 1860, top: 90, bottom: 900 },
+  home: { x: 960, y: 760 },
+  ledge: { x: 1500, y: 700 },
+  corals: [
+    { x: 200, y: 700 },
+    { x: 1600, y: 650 },
+  ],
+};
 
 /** A tank with just this species, and the moment run to the end (or a time limit). */
 function play(id: string, limitS = 90) {
   const def = MOMENTS.find((m) => m.id === id)!;
-  const tank = new Tank(env, [getSpecies(def.speciesId)!], 7);
+  const tank = new Tank(env, def.speciesId ? [getSpecies(def.speciesId)!] : [], 7);
   const rng = createRng(3);
   const actors = momentActors(def, tank.agents, rng)!;
   const run = startMoment(def, actors, tank.env, rng);
   const fx: MomentEffect[] = [];
-  const track: Array<{ t: number; ys: number[] }> = [];
+  const track: Array<{ t: number; ys: number[]; show: Array<FishAgent['show']> }> = [];
   for (let t = 0; t < limitS && !run.done; t += 1 / 30) {
     fx.push(...run.update(1 / 30));
     tank.update(1 / 30);
-    track.push({ t: run.t, ys: actors.map((a) => a.pos.y) });
+    track.push({ t: run.t, ys: actors.map((a) => a.pos.y), show: actors.map((a) => ({ ...a.show })) });
   }
   return { def, run, actors, fx, track, tank };
 }
@@ -67,6 +76,45 @@ describe('moment scripts', () => {
     const { track } = play('clownfish-shelter');
     const mid = track.find((s) => s.t >= 18)!.ys;
     for (const y of mid) expect(Math.abs(y - (env.home.y + 32))).toBeLessThan(60);
+  });
+
+  it('the arowana leaps out of the water and splashes going out and coming back in', () => {
+    const { fx, track } = play('arowana-leap');
+    expect(fx.filter((f) => f.kind === 'splash')).toHaveLength(2);
+    expect(Math.min(...track.map((s) => s.ys[0]!))).toBeLessThan(0);
+  });
+
+  it('the royal gramma rolls upside down under the ledge, then rights itself', () => {
+    const { track, actors } = play('gramma-ledge');
+    const mid = track.find((s) => s.t >= 18)!;
+    expect(mid.show[0]!.roll).toBe(1);
+    expect(Math.abs(mid.ys[0]! - env.ledge.y)).toBeLessThan(40);
+    expect(actors[0]!.show.roll).toBeLessThan(0.1);
+  });
+
+  it('the neon tetras fade to grey as they settle', () => {
+    const { track } = play('neon-night');
+    expect(track.find((s) => s.t >= 30)!.show.every((v) => v.fade > 0.9)).toBe(true);
+  });
+
+  it('the vampire squid turns its cloak over and back', () => {
+    const { track, actors } = play('vampire-pineapple');
+    expect(track.find((s) => s.t >= 10)!.show[0]!.cloak).toBe(1);
+    expect(actors[0]!.show.cloak).toBe(0);
+  });
+
+  it('the Atolla flashes during its alarm', () => {
+    const { track } = play('atolla-alarm');
+    expect(Math.max(...track.map((s) => s.show[0]!.glow))).toBe(1);
+  });
+
+  it('coral spawning needs no animals and releases a few hundred clusters from the corals', () => {
+    const { fx, actors } = play('coral-spawning');
+    expect(actors).toEqual([]);
+    const clusters = fx.filter((f) => f.kind === 'cluster');
+    expect(clusters.length).toBeGreaterThan(200);
+    expect(clusters.length).toBeLessThan(500);
+    for (const c of clusters) expect(c.y).toBeGreaterThan(600);
   });
 
   it('a pair moment needs two animals', () => {

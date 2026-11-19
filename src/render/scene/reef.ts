@@ -26,6 +26,10 @@ interface Rock {
 export interface ReefLayout {
   rocks: Rock[];
   anemone: { x: number; y: number; size: number };
+  /** Just under the left edge of the lowest plate coral on the big right rock. */
+  ledge: Vec;
+  /** Where the corals grow (as painted in paintMid), for coral spawning. */
+  corals: Vec[];
   bubbleSources: number[];
 }
 
@@ -47,6 +51,22 @@ export function layoutReef(def: BiomeDef): ReefLayout {
   return {
     rocks,
     anemone: { x: top.x, y: top.y + 18, size: 120 },
+    // Matches the plate coral painted at t = 0.75 on rock 2 (paintMid): its
+    // lowest plate is 150 wide at y + 4, with open water under its left side.
+    ledge: (() => {
+      const p = rockPoint(rocks[2]!, 0.75);
+      return { x: p.x - 42, y: p.y + 4 + 26 };
+    })(),
+    // The rock positions paintMid decorates with corals (not the sponges or sea fans).
+    corals: (
+      [
+        [0, [0.18, 0.3, 0.7, 0.82]],
+        [1, [0.3, 0.62]],
+        [2, [0.42, 0.55, 0.75, 0.88]],
+        [3, [0.35, 0.7]],
+        [4, [0.85]],
+      ] as Array<[number, number[]]>
+    ).flatMap(([i, ts]) => ts.map((t) => rockPoint(rocks[i]!, t))),
     bubbleSources: [430, 1530, 860],
   };
 }
@@ -79,6 +99,10 @@ export interface Scenery {
   drawLive?(ctx: CanvasRenderingContext2D, time: number): void;
   /** Where 'hover' fish like to stay. */
   home?: Vec;
+  /** Under an overhang, where a royal gramma can swim upside down (v1.4). */
+  ledge?: Vec;
+  /** Where corals grow, for coral spawning (v1.4). */
+  corals?: Vec[];
   bubbleSources: number[];
   grass: Array<{ x: number; spread: number; count: number }>;
 }
@@ -91,6 +115,8 @@ export function createReefScenery(def: BiomeDef): Scenery {
     paintMid: (ctx) => paintMid(ctx, def, layout),
     drawLive: (ctx, time) => drawAnemone(ctx, a.x, a.y, a.size, time),
     home: { x: a.x, y: a.y - a.size * 0.55 },
+    ledge: layout.ledge,
+    corals: layout.corals,
     bubbleSources: layout.bubbleSources,
     grass: [
       { x: 60, spread: 120, count: 16 },

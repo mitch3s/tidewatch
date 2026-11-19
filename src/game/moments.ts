@@ -1,4 +1,5 @@
 import { MOMENT_HOURS, type MomentDef, type MomentTime } from '../data/moments';
+import type { BiomeId } from '../data/types';
 import type { SaveState } from '../save/schema';
 
 /** Moments you haven't seen yet are this many times as likely (spec v1.4 §3.2). */
@@ -13,15 +14,28 @@ export function inMomentTime(when: MomentTime, hour: number): boolean {
 }
 
 export interface MomentContext {
+  /** The tank on screen. */
+  biome: BiomeId;
   /** Hour of the day, as for the lighting. */
   hour: number;
+  /** The moon's phase, 0 new .. 0.5 full. */
+  moonPhase: number;
+  /** Month, 1–12. */
+  month: number;
   /** How many of each species are in the tank on screen. */
   counts: ReadonlyMap<string, number>;
 }
 
 /** The moments that could start now in the tank on screen. */
 export function momentCandidates(defs: readonly MomentDef[], ctx: MomentContext): MomentDef[] {
-  return defs.filter((m) => (ctx.counts.get(m.speciesId) ?? 0) >= m.minCount && inMomentTime(m.when, ctx.hour));
+  return defs.filter(
+    (m) =>
+      m.biome === ctx.biome &&
+      (m.speciesId === null || (ctx.counts.get(m.speciesId) ?? 0) >= m.minCount) &&
+      inMomentTime(m.when, ctx.hour) &&
+      (!m.moon || (ctx.moonPhase >= m.moon[0] && ctx.moonPhase <= m.moon[1])) &&
+      (!m.months || m.months.includes(ctx.month)),
+  );
 }
 
 /** Pick a moment by weight, favouring ones not yet witnessed. Null when none fits. */

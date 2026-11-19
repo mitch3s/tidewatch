@@ -32,6 +32,11 @@ import { createRng } from '../../util/rng';
 /** Parallax per layer: 0 = fixed to the screen, 1 = moves with the fish. */
 const PARALLAX = { far: 0.35, rays: 0.5, mid: 0.8, fish: 1, bubbles: 1.05, front: 1.25 } as const;
 
+/** Colour that fish fade toward when they dim (neon tetras at night, v1.4). */
+const FADED_RGB = 'rgb(58,62,72)';
+/** How much faster an alarmed display's chase runs (the Atolla's alarm, v1.4). */
+const ALARM_CHASE = 9;
+
 /** Colour of the light rays at night, and their strength under a full moon (spec v1.4 §2). */
 const MOON_RGB = '170,195,255';
 const MOONLIGHT = 0.55;
@@ -134,6 +139,12 @@ export class TankScene {
       {
         bounds: { left: 60, right: STAGE_WIDTH - 60, top: 90, bottom: biome.floor.y - 30 },
         home: this.scenery.home,
+        ledge: this.scenery.ledge,
+        corals: this.scenery.corals,
+        fromScenery: (p) => {
+          const s = this.camera.toScreen(p.x, p.y, PARALLAX.mid);
+          return this.camera.toWorld(s.x, s.y, PARALLAX.fish);
+        },
       },
       species,
       biome.seed + 4,
@@ -216,7 +227,8 @@ export class TankScene {
     if (!actors) return false;
     const run = startMoment(def, actors, this.tank.env, this.rng);
     this.moment = run;
-    if (this.closeupsOn()) this.closeups.follow(() => run.focus());
+    // Whole-tank moments stay wide; the rest are filmed close when close-ups are on.
+    if (this.closeupsOn() && !def.wide) this.closeups.follow(() => run.focus());
     return true;
   }
 
@@ -334,8 +346,14 @@ export class TankScene {
             ctx.globalAlpha = 1;
           }
         }
+        // Colours dimmed to grey (neon tetras resting at night, v1.4).
+        if (agent.show.fade > 0.01) {
+          ctx.globalAlpha = 0.8 * agent.show.fade;
+          renderFish(ctx, agent.species.look, pose, { silhouette: FADED_RGB });
+          ctx.globalAlpha = 1;
+        }
       }
-      this.drawGlows(ctx, agents.map((a) => a.species.look), poses, time);
+      this.drawGlows(ctx, agents.map((a) => a.species.look), poses, time, agents.map((a) => a.show.glow));
       if (this.visitor) this.drawVisitor(ctx, alpha, time);
       this.momentFx.draw(ctx);
       this.sparkles.draw(ctx);
@@ -433,7 +451,8 @@ export class TankScene {
    * Bioluminescence: a soft halo around every light an animal carries,
    * drawn live (additively) so it glows over the dark water and pulses gently.
    */
-  private drawGlows(ctx: CanvasRenderingContext2D, looks: readonly FishLook[], poses: readonly FishPose[], time: number): void {
+  /** `boost` turns a display up, 0..1: brighter, bigger and faster (the Atolla's alarm, v1.4). */
+  private drawGlows(ctx: CanvasRenderingContext2D, looks: readonly FishLook[], poses: readonly FishPose[], time: number, boost: readonly number[] = []): void {
     let any = false;
     for (let i = 0; i < looks.length; i++) {
       const look = looks[i]!;
@@ -443,11 +462,24 @@ export class TankScene {
         ctx.globalCompositeOperation = 'lighter';
         any = true;
       }
+      const b = boost[i] ?? 0;
       const pulse = 0.65 + 0.35 * Math.sin(time * 1.4 + i * 1.9);
+      // Alarmed, the chase runs several times as fast.
+      const chaseT = time * (2.2 + ALARM_CHASE * b);
       for (const g of glowPoints(look, poses[i]!)) {
         // A chasing display: a bright pulse runs round the spots in turn.
-        ctx.globalAlpha = g.chase === undefined ? pulse : 0.12 + 0.88 * Math.max(0, Math.sin(time * 2.2 + i - g.chase * TAU)) ** 6;
-        ctx.drawImage(this.haloSprite(g.rgb), g.x - g.r, g.y - g.r, g.r * 2, g.r * 2);
+        const a = g.chase === undefined ? pulse : 0.12 + 0.88 * Math.max(0, Math.sin(chaseT + i - g.chase * TAU)) ** 6;
+        ctx.globalAlpha = Math.min(1, a * (1 + 1.5 * b));
+        const r = g.r * (1 + 2.2 * b);
+        ctx.drawImage(this.haloSprite(g.rgb), g.x - r, g.y - r, r * 2, r * 2);
+      }
+      // An alarm lights up the water all round the animal, flickering.
+      if (b > 0.01 && look.glow) {
+        const p = poses[i]!;
+        const flicker = 0.6 + 0.4 * Math.sin(time * 23 + i);
+        const r = p.length * 1.1;
+        ctx.globalAlpha = 0.55 * b * flicker;
+        ctx.drawImage(this.haloSprite(look.glow.halo), p.x - r, p.y - r, r * 2, r * 2);
       }
     }
     if (any) ctx.restore();
